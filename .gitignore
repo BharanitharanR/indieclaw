@@ -2,3 +2,4 @@
 /wa-echo-loop/.wwebjs_auth
 /wa-echo-loop/.wwebjs_cache
 /wa-echo-loop/node_modules
+/sdk/__pycache__
