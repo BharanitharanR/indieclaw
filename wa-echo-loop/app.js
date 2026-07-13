@@ -3,82 +3,59 @@ const qrcode = require("qrcode-terminal");
 
 const RustAIClient = require("../sdk/rust_ai.js");
 const ai = new RustAIClient();
-
+const WHITELISTED_MOBILE_NUMBER = "xxxx"
 const client = new Client({
     authStrategy: new LocalAuth()
 });
 
 client.on("qr", qr => {
-
     console.log("Scan QR");
-
-    qrcode.generate(qr, {
-        small: true
-    });
-
+    qrcode.generate(qr, { small: true });
 });
 
 client.on("ready", () => {
-
     console.log("WhatsApp Ready");
-
 });
 
-client.on("authenticated", () => {
-    console.log("Authenticated");
-});
+async function handleIncomingMessage(msg) {
+    if (msg.from.includes("@g.us")) return;
+    if (msg.isStatus) return;
 
-client.on("auth_failure", msg => {
-    console.log("Auth failure:", msg);
-});
-
-client.on("disconnected", reason => {
-    console.log("Disconnected:", reason);
-});
-
-client.on("change_state", state => {
-    console.log("State:", state);
-});
-
-client.on("loading_screen", (percent, message) => {
-    console.log(percent, message);
-});
-
-
-// Change "message" to "message_create"
-client.on("message_create", async msg => {
-
-  
-    console.log("Received message:", msg.from);
-    console.log("Received BODY:", msg.body);
-    // Ignore everyone except this number
-    // if (!ALLOWED_NUMBER.includes(msg.from))
-    //    return;
-
-    // Ignore groups
-     if (msg.from.includes("@g.us"))
-        return;
-
-    // Ignore status updates
-    if (msg.isStatus)
-        return;
-
-    console.log("User:", msg.body);
+    // Read message body or fallback to image caption text
+    let promptText = msg.body || msg.caption || "";
     
-    if (!msg.body.includes("Jambu::") )
-        return;
+    // Explicit security whitelist restriction validation 
+    if (!msg.from.includes( WHITELISTED_MOBILE_NUMBER)) return;
+    if (!promptText.startsWith("Jambu::")) return;
+
+    console.log(`Processing valid user query from: ${msg.from}`);
+
+    // Clean trigger prefix so the model doesn't get confused by "Jambu::"
+    promptText = promptText.replace("Jambu::", "").trim();
+    
+    // If no specific text prompt remains alongside media, use a definitive instruction
+    if (promptText === "" && msg.hasMedia) {
+        promptText = "Describe this image in detail.";
+    }
 
     try {
+        const userMessage = {
+            role: "user",
+            content: promptText
+        };
 
-        const response = await ai.chat([
-            {
-                role: "user",
-                content: msg.body
+        if (msg.hasMedia) {
+            const media = await msg.downloadMedia();
+            if (media && media.mimetype.startsWith("image/")) {
+                userMessage.image = `data:${media.mimetype};base64,${media.data}`;
+                console.log("Image media successfully attached to active payload structure.");
             }
-        ]);
+        }
+
+        // Invoke client without hardcoded vision parameters — SDK resolves routing rules internally
+        const response = await ai.chat([userMessage]);
 
         let answer = "";
-
         if (response.message) {
             answer = response.message.content;
         } else if (response.response) {
@@ -90,66 +67,12 @@ client.on("message_create", async msg => {
         await msg.reply(answer);
 
     } catch (err) {
-
-        console.error(err);
-
+        console.error("Processing Fail:", err);
         await msg.reply("Rust Gateway unavailable.");
-
     }
+}
 
-});
-
-client.on("message", async msg => {
-
-   
-    console.log("Received message:", msg.from);
-    console.log("Received BODY:", msg.body);
-    // Ignore everyone except this number
-    // if (!ALLOWED_NUMBER.includes(msg.from))
-    //    return;
-
-    // Ignore groups
-     if (msg.from.includes("@g.us"))
-        return;
-
-    // Ignore status updates
-    if (msg.isStatus)
-        return;
-
-    console.log("User:", msg.body);
-    
-    if (!msg.body.includes("Jambu::") )
-        return;
-
-    try {
-
-        const response = await ai.chat([
-            {
-                role: "user",
-                content: msg.body
-            }
-        ]);
-
-        let answer = "";
-
-        if (response.message) {
-            answer = response.message.content;
-        } else if (response.response) {
-            answer = response.response;
-        } else {
-            answer = JSON.stringify(response);
-        }
-
-        await msg.reply(answer);
-
-    } catch (err) {
-
-        console.error(err);
-
-        await msg.reply("Rust Gateway unavailable.");
-
-    }
-
-});
+client.on("message_create", handleIncomingMessage);
+client.on("message", handleIncomingMessage);
 
 client.initialize();
