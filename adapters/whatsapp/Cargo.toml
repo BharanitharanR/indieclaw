@@ -1,0 +1,20 @@
+[package]
+name = "whatsapp_adapter"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+gateway_sdk = { path = "../../sdk-r" }
+
+tokio = { version = "1", features = ["full"] }
+serde = { version = "1.0", features = ["derive"] }
+toml = "0.8"
+anyhow = "1.0"
+base64 = "0.22"
+whatsapp-rust = { version = "0.6",default-features = false, features = ["sqlite-storage", "tokio-runtime", "tokio-transport", "ureq-client"] }
+whatsapp-rust-tokio-transport = "0.6"
+whatsapp-rust-ureq-http-client = "0.6"
+wacore = { version = "0.6",default-features = false }
+wacore_binary = "0.6"
+waproto = "0.6"
+qrcode = "0.14"

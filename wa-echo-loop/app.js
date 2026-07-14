@@ -1,78 +1,120 @@
-const { Client, LocalAuth } = require("whatsapp-web.js");
-const qrcode = require("qrcode-terminal");
+const { Client, LocalAuth } = require('whatsapp-web.js');
+const qrcode = require('qrcode-terminal');
+const axios = require('axios');
 
-const RustAIClient = require("../sdk/rust_ai.js");
-const ai = new RustAIClient();
+// Go Gateway Service URL
+const GO_GATEWAY_URL = 'http://127.0.0.1:8080/api/v1/chat';
 
+// Model definitions
+const TEXT_MODEL = 'qwen3:8b';
+const VISION_MODEL = 'gemma4:e2b';
+
+// Initialize WhatsApp Client with local session saving
 const client = new Client({
-    authStrategy: new LocalAuth()
+    authStrategy: new LocalAuth({ dataPath: './.wwebjs_auth' }),
+    puppeteer: {
+        args: ['--no-sandbox', '--disable-setuid-sandbox']
+    }
 });
 
-client.on("qr", qr => {
-    console.log("Scan QR");
+// Display QR Code in Terminal for setup
+client.on('qr', (qr) => {
+    console.log('⚡ Scan this QR Code with WhatsApp on your phone:');
     qrcode.generate(qr, { small: true });
 });
 
-client.on("ready", () => {
-    console.log("WhatsApp Ready");
+// Log readiness state
+client.on('ready', () => {
+    console.log('✅ WhatsApp Bot is connected and ready!');
+    console.log(`🤖 Default Text Model: ${TEXT_MODEL}`);
+    console.log(`👁️ Default Vision Model: ${VISION_MODEL}`);
 });
 
+// Main Message Event Handler
 async function handleIncomingMessage(msg) {
-    if (msg.from.includes("@g.us")) return;
-    if (msg.isStatus) return;
+    // Ignore status updates, group notifications, or broadcasts
+    if (msg.isStatus || msg.from === 'status@broadcast') return;
 
-    // Read message body or fallback to image caption text
-    let promptText = msg.body || msg.caption || "";
-    
-    // Explicit security whitelist restriction validation 
-    if (!msg.from.includes("919361315379@c.us")) return;
-    if (!promptText.startsWith("Jambu::")) return;
+    let targetModel = TEXT_MODEL;
+    let base64Images = [];
+    let promptText = msg.body ? msg.body.trim() : '';
+    console.log(`message received from ${msg.from}. `);
+     if(msg.from.includes("@g.us")){
+            
+            return; // Ignore group messages
+        }
 
-    console.log(`Processing valid user query from: ${msg.from}`);
+        if(!msg.body.startsWith("Jambu::")){
+            return; // Ignore group messages    
+        }
 
-    // Clean trigger prefix so the model doesn't get confused by "Jambu::"
-    promptText = promptText.replace("Jambu::", "").trim();
-    
-    // If no specific text prompt remains alongside media, use a definitive instruction
-    if (promptText === "" && msg.hasMedia) {
-        promptText = "Describe this image in detail.";
-    }
-
+        if(!msg.from.includes("919361315379@c.us")){
+            return; // Ignore group messages    
+        }
     try {
-        const userMessage = {
-            role: "user",
-            content: promptText
-        };
-
+        // Check if message contains an image media attachment
         if (msg.hasMedia) {
             const media = await msg.downloadMedia();
-            if (media && media.mimetype.startsWith("image/")) {
-                userMessage.image = `data:${media.mimetype};base64,${media.data}`;
-                console.log("Image media successfully attached to active payload structure.");
+
+            // Only process image media
+            if (media && media.mimetype.startsWith('image/')) {
+                base64Images.push(media.data); // Pure base64 string
+                targetModel = VISION_MODEL;    // Switch to Gemma 4 for vision
+
+                if (!promptText) {
+                    promptText = "Describe what you see in this image in detail.";
+                }
+
+                console.log(`📸 Image received from ${msg.from}. Forwarding to ${VISION_MODEL}...`);
             }
-        }
-
-        // Invoke client without hardcoded vision parameters — SDK resolves routing rules internally
-        const response = await ai.chat([userMessage]);
-
-        let answer = "";
-        if (response.message) {
-            answer = response.message.content;
-        } else if (response.response) {
-            answer = response.response;
         } else {
-            answer = JSON.stringify(response);
+            console.log(`💬 Text message received from ${msg.from}. Forwarding to ${TEXT_MODEL}...`);
         }
 
-        await msg.reply(answer);
 
-    } catch (err) {
-        console.error("Processing Fail:", err);
-        await msg.reply("Rust Gateway unavailable.");
+        // Do not process empty messages (e.g., non-image media like audio/documents)
+        if (!promptText && base64Images.length === 0) return;
+
+        // Construct Ollama API Chat request body expected by Go Gateway
+        const payload = {
+            model: targetModel,
+            messages: [
+                {
+                    role: "user",
+                    content: promptText,
+                    images: base64Images
+                }
+            ],
+            stream: false
+        };
+
+        // Call your Go Gateway endpoint
+        const response = await axios.post(GO_GATEWAY_URL, payload, {
+            headers: { 'Content-Type': 'application/json' },
+            timeout: 180000 // 3 minute timeout for model generation
+        });
+
+        // Extract model reply
+        if (response.data && response.data.message && response.data.message.content) {
+            const replyText = response.data.message.content;
+            await msg.reply(replyText);
+            console.log(`✨ Replied to ${msg.from} via ${targetModel}`);
+        } else {
+            await msg.reply("⚠️ Received empty response from model gateway.");
+        }
+
+    } catch (error) {
+        console.error(`❌ Error processing message from ${msg.from}:`, error.message);
+        
+        if (error.response) {
+            console.error('Gateway Error Status:', error.response.status);
+            console.error('Gateway Error Data:', error.response.data);
+        }
+
+        await msg.reply("Sorry, I encountered an error trying to process your request.");
     }
-}
-
+};
 client.on("message_create", handleIncomingMessage);
-client.on("message", handleIncomingMessage);
-
+// client.on("message", handleIncomingMessage);
+// Start WhatsApp Client
 client.initialize();

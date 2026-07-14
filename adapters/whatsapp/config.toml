@@ -1,0 +1,11 @@
+[bot]
+allowed_jid = "919361315379@s.whatsapp.net"
+trigger_prefix = "Jambu::"
+default_image_prompt = "Describe this image in detail."
+empty_prompt_reply = "Please provide a prompt or an image to analyze."
+error_reply = "An error occurred while processing your request. Please try again later."
+
+[gateway]
+base_url = "http://127.0.0.1:8080"
+chat_endpoint = "/api/v1/chat"
+request_timeout_seconds = 60
