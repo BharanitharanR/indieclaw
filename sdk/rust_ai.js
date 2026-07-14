@@ -25,44 +25,6 @@ class RustAIClient {
     }
 
     async chat(messages, options = {}) {
-        let hasImage = false;
-
-        // Process message payloads
-        const processedMessages = messages.map(msg => {
-            if (msg.image) {
-                hasImage = true;
-                const base64Str = this._encodeImage(msg.image);
-                return {
-                    role: msg.role,
-                    content: msg.content,
-                    images: [base64Str] // Native Ollama specification array
-                };
-            }
-            return msg;
-        });
-
-        // 🔀 DYNAMIC ROUTING CONFIGURATION
-        let targetUrl;
-        let selectedModel;
-        let chatOptions;
-
-        if (hasImage) {
-            // Direct to Ollama to ensure vision parameters aren't stripped
-            targetUrl = `${this.ollamaUrl}/api/chat`;
-            selectedModel = "gemma4:e2b"; // Enforce gemma for all media/vision tasks
-            chatOptions = {
-                num_ctx: options.context ?? 8192,
-                think: false // Disabled thinking steps to avoid gemma-vision processing loops
-            };
-        } else {
-            // Standard Text: Route through your Rust proxy gateway flow
-            targetUrl = `${this.baseUrl}/api/v1/chat`;
-            selectedModel = options.model || "qwen3:8b"; // Fallback to your primary text model
-            chatOptions = {
-                num_ctx: options.context ?? 40960,
-                think: options.think ?? true // Retain tool-use thinking features for text agents
-            };
-        }
 
         const payload = {
             model: selectedModel,
