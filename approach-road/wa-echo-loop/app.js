@@ -30,6 +30,17 @@ client.on('ready', () => {
     console.log(`👁️ Default Vision Model: ${VISION_MODEL}`);
 });
 
+client.on("messageCreate", async (message) => {
+    console.log(
+        "Message:",
+        message.author.tag,
+        message.content,
+        message.guild?.name
+    );
+
+
+});
+
 // Main Message Event Handler
 async function handleIncomingMessage(msg) {
     // Ignore status updates, group notifications, or broadcasts
@@ -54,7 +65,15 @@ async function handleIncomingMessage(msg) {
     try {
         // Check if message contains an image media attachment
         if (msg.hasMedia) {
-            const media = await msg.downloadMedia();
+            try{
+                await new Promise(resolve => setTimeout(resolve, 20000));
+                const media = await msg.downloadMedia();
+            }
+            catch (error) {
+                console.error(`❌ Error downloading media from ${msg.from}:`, error);
+                await msg.reply("⚠️ Failed to download the image. Please try again.");
+                return;
+            }
 
             // Only process image media
             if (media && media.mimetype.startsWith('image/')) {
@@ -75,6 +94,10 @@ async function handleIncomingMessage(msg) {
         // Do not process empty messages (e.g., non-image media like audio/documents)
         if (!promptText && base64Images.length === 0) return;
 
+        promptText = promptText.replace(/^Jambu::\s*/, ''); // Remove prefix for processing
+        const location = await getCurrentLocation();
+        const contextualPrompt = `Current Location: ${location}. \nUser Prompt: ${promptText}`;
+        promptText = contextualPrompt
         // Construct Ollama API Chat request body expected by Go Gateway
         const payload = {
             model: targetModel,
@@ -104,16 +127,32 @@ async function handleIncomingMessage(msg) {
         }
 
     } catch (error) {
-        console.error(`❌ Error processing message from ${msg.from}:`, error.message);
-        
-        if (error.response) {
-            console.error('Gateway Error Status:', error.response.status);
-            console.error('Gateway Error Data:', error.response.data);
-        }
+            // Better debugging: print the entire error object
+            console.error(`❌ Detailed Error from ${msg.from}:`, error);
+            
+            // Check if it's an Axios error specifically
+            if (error.response) {
+                console.error('Gateway Error Data:', error.response.data);
+            } else if (error.request) {
+                console.error('No response received from Gateway');
+            } else {
+                console.error('General Error Message:', error.message || error);
+            }
 
-        await msg.reply("Sorry, I encountered an error trying to process your request.");
-    }
+            await msg.reply("Sorry, I encountered an error trying to process your image.");
+        }
 };
+// Add this helper function at the top level
+async function getCurrentLocation() {
+    try {
+        const response = await axios.get('http://ip-api.com/json/');
+        const { city, regionName, country } = response.data;
+        return `${city}, ${regionName}, ${country}`;
+    } catch (error) {
+        console.error("Failed to fetch location:", error.message);
+        return "Unknown Location";
+    }
+}
 client.on("message_create", handleIncomingMessage);
 // client.on("message", handleIncomingMessage);
 // Start WhatsApp Client

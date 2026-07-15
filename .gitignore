@@ -4,3 +4,7 @@
 /wa-echo-loop/node_modules
 /sdk/__pycache__
 /target
+/approach-road/wa-echo-loop/.wwebjs_auth
+/approach-road/wa-echo-loop/.wwebjs_cache
+/approach-road/wa-echo-loop/node_modules
+approach-road/discord/.env
