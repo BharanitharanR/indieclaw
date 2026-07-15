@@ -5,22 +5,23 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"gateway-service/internal/chat"
+	"gateway-service/internal/mcp"
 	"io"
 	"log"
 	"net/http"
 	"time"
-
-	"gateway-service/internal/chat"
 )
 
 type OllamaService struct {
 	httpClient   *http.Client
 	ollamaBase   string
 	defaultModel string
+	mcpRegistry  *mcp.ToolRegistry
 	queuePermit  chan struct{} // Semaphore to prevent Ollama GPU memory exhaustion
 }
 
-func NewOllamaService(ollamaBase string, defaultModel string) *OllamaService {
+func NewOllamaService(ollamaBase string, defaultModel string, registry *mcp.ToolRegistry) *OllamaService {
 	sem := make(chan struct{}, 1) // Capacity = 1 permit
 	sem <- struct{}{}             // Initial permit token
 
@@ -28,6 +29,7 @@ func NewOllamaService(ollamaBase string, defaultModel string) *OllamaService {
 		httpClient:   &http.Client{Timeout: 180 * time.Second}, // Extended timeout for Vision processing
 		ollamaBase:   ollamaBase,
 		defaultModel: defaultModel,
+		mcpRegistry:  registry,
 		queuePermit:  sem,
 	}
 }
@@ -71,36 +73,67 @@ func (s *OllamaService) handleProxyGenerate(w http.ResponseWriter, r *http.Reque
 }
 
 func (s *OllamaService) AskOllama(ctx context.Context, req *chat.ChatRequest) (*chat.ChatResponse, error) {
-	jsonBytes, err := json.Marshal(req)
-	if err != nil {
-		return nil, fmt.Errorf("failed to marshal request: %w", err)
+	// 1. Inject System Prompt (using chat.Message)
+
+	// 2. Filter Tools
+	allTools := s.mcpRegistry.GetAllTools()
+	var ollamaTools []chat.Tool
+	for _, t := range allTools {
+		if t.Name == "search" || t.Name == "fetch_content" {
+			ollamaTools = append(ollamaTools, chat.Tool{
+				Type: "function",
+				Function: chat.ToolFunction{
+					Name:        t.Name,
+					Description: t.Description,
+					Parameters:  t.InputSchema,
+				},
+			})
+		}
 	}
+	req.Tools = ollamaTools
 
 	url := fmt.Sprintf("%s/api/chat", s.ollamaBase)
-	httpReq, err := http.NewRequestWithContext(ctx, "POST", url, bytes.NewBuffer(jsonBytes))
-	if err != nil {
-		return nil, fmt.Errorf("failed to build request: %w", err)
-	}
-	httpReq.Header.Set("Content-Type", "application/json")
 
-	resp, err := s.httpClient.Do(httpReq)
-	if err != nil {
-		return nil, fmt.Errorf("ollama http call failed: %w", err)
-	}
-	defer resp.Body.Close()
+	for {
+		jsonBytes, _ := json.Marshal(req)
+		httpReq, _ := http.NewRequestWithContext(ctx, "POST", url, bytes.NewBuffer(jsonBytes))
+		httpReq.Header.Set("Content-Type", "application/json")
 
-	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
-		return nil, fmt.Errorf("ollama returned %d: %s", resp.StatusCode, string(body))
-	}
+		resp, err := s.httpClient.Do(httpReq)
+		if err != nil {
+			return nil, err
+		}
 
-	var chatResp chat.ChatResponse
-	if err := json.NewDecoder(resp.Body).Decode(&chatResp); err != nil {
-		return nil, fmt.Errorf("failed to decode response: %w", err)
-	}
+		var chatResp chat.ChatResponse
+		if err := json.NewDecoder(resp.Body).Decode(&chatResp); err != nil {
+			resp.Body.Close()
+			return nil, err
+		}
+		resp.Body.Close()
 
-	return &chatResp, nil
+		if len(chatResp.Message.ToolCalls) > 0 {
+			req.Messages = append(req.Messages, chatResp.Message)
+
+			for _, tc := range chatResp.Message.ToolCalls {
+				var args map[string]any
+				println("Tool Call:", tc.Function.Name, "Args:", tc.Function.Arguments)
+				json.Unmarshal([]byte(tc.Function.Arguments), &args)
+
+				toolResult, _ := s.mcpRegistry.Execute(ctx, tc.Function.Name, args)
+
+				// Use chat.Message here instead of chat.ChatMessage
+				req.Messages = append(req.Messages, chat.ChatMessage{
+					Role:    "tool",
+					Content: toolResult,
+				})
+			}
+			continue
+		}
+		return &chatResp, nil
+	}
 }
+
+// Helper: Converts your MCP tool definitions to Ollama's expected JSON format
 
 func (s *OllamaService) proxyStream(w http.ResponseWriter, r *http.Request, targetURL string) {
 	// Acquire permit lock
