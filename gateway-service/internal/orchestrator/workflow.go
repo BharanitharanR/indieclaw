@@ -2,8 +2,11 @@ package orchestrator
 
 import (
 	"context"
+	"encoding/base64"
 	"fmt"
+	"gateway-service/internal/pkg/vision"
 	"log"
+	"net/http"
 	"reflect"
 
 	"github.com/Protocol-Lattice/go-agent"
@@ -18,33 +21,37 @@ type AgentWorkflow struct {
 }
 
 func NewAgentWorkflow(ctx context.Context, textModelName, visionModelName string) (*AgentWorkflow, error) {
-	// Create the LLM provider objects instead of passing strings
-	// Replace "ollama" with your actual provider (e.g., "openai", "gemini") if needed
-
 	memBank := memory.NewMemoryBankWithStore(memory.NewInMemoryStore())
 	mem := memory.NewSessionMemory(memBank, 8)
-	textModel, err := models.NewLLMProvider(ctx, "ollama", textModelName, "")
+
+	// 1. Text Model initialization
+	textModel, err := models.NewOllamaLLM(textModelName, "")
 	if err != nil {
 		return nil, err
 	}
 
-	visionModel, err := models.NewLLMProvider(ctx, "ollama", visionModelName, "")
+	// 2. Vision Model initialization (Manual creation + Wrapper)
+	originalLLM, err := models.NewOllamaLLM(visionModelName, "")
 	if err != nil {
 		return nil, err
 	}
+	// Wrap it with your fixed logic
+	fixedLLM := &vision.VisionFixedLLM{OllamaLLM: originalLLM}
 
+	// 3. Text Agent
 	t, err := agent.New(agent.Options{
 		SystemPrompt: "You are an expert orchestrator assistant.",
-		Model:        textModel, // Now passing the provider object
+		Model:        textModel,
 		Memory:       mem,
 	})
 	if err != nil {
 		return nil, err
 	}
 
+	// 4. Vision Agent (Using the fixedLLM wrapper)
 	v, err := agent.New(agent.Options{
 		SystemPrompt: "You are an expert vision assistant.",
-		Model:        visionModel, // Now passing the provider object
+		Model:        fixedLLM, // <--- Using the wrapped provider here
 		Memory:       mem,
 	})
 	if err != nil {
@@ -53,15 +60,37 @@ func NewAgentWorkflow(ctx context.Context, textModelName, visionModelName string
 
 	return &AgentWorkflow{textAgent: t, visionAgent: v}, nil
 }
-func (w *AgentWorkflow) Run(ctx context.Context, sessionID string, input string, isVision bool) (string, error) {
+
+func (w *AgentWorkflow) Run(ctx context.Context, sessionID string, input string, isVision bool, imageBase64 string) (string, error) {
 	var selectedAgent *agent.Agent
+	var response interface{}
+	var err error
 	if isVision {
-		selectedAgent = w.visionAgent
+		// 1. CRITICAL: Decode the Base64 string into RAW BYTES
+		imgBytes, err := base64.StdEncoding.DecodeString(imageBase64)
+		// Add this:
+		mimeType := http.DetectContentType(imgBytes)
+		log.Printf("DEBUG: Detected MIME for file: %s", mimeType)
+		if err != nil {
+			return "", fmt.Errorf("failed to decode image: %v", err)
+		}
+
+		// 2. Prepare the file structure with RAW BYTES
+		files := []models.File{
+			{
+				Name: "input.jpg",
+				MIME: "image/jpeg",
+				Data: imgBytes, // The library expects raw binary data here
+			},
+		}
+
+		// 3. Invoke the library method
+		return w.visionAgent.GenerateWithFiles(ctx, sessionID, input, files)
 	} else {
 		selectedAgent = w.textAgent
+		response, err = selectedAgent.Generate(ctx, sessionID, input)
 	}
 
-	response, err := selectedAgent.Generate(ctx, sessionID, input)
 	// --- DEBUG START ---
 	if response != nil {
 		v := reflect.ValueOf(response)

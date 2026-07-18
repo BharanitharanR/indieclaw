@@ -23,6 +23,7 @@ type server struct {
 }
 
 func (s *server) Chat(ctx context.Context, req *v1.ChatRequest) (*v1.ChatResponse, error) {
+	var imageData string
 	if len(req.Messages) == 0 {
 		return nil, fmt.Errorf("no messages provided")
 	}
@@ -36,18 +37,21 @@ func (s *server) Chat(ctx context.Context, req *v1.ChatRequest) (*v1.ChatRespons
 	userMsg := lastMsg.GetContent()
 
 	// 3. Determine if this is a vision request and select the model
-	isVision := len(lastMsg.Images) > 0
+	isVision := len(lastMsg.GetImages()) > 0
+	log.Default().Printf("DEBUG: Received message. IsVision: %v, UserMsg: %s, ImagesCount: %d", isVision, userMsg, len(lastMsg.GetImages()))
 	selectedModel := textModel
 	if isVision {
 		selectedModel = visionModel
+		imageData = lastMsg.GetImages()[0]
+		log.Printf("DEBUG: Processing [Vision: %v] with model: %s, Image Data: %d ", isVision, selectedModel, len(imageData))
 	}
 
-	log.Printf("DEBUG: Processing [Vision: %v] with model: %s, Input: %s", isVision, selectedModel, userMsg)
+	log.Printf("DEBUG: Processing [Vision: %v] with model: %s, Input: %s ", isVision, selectedModel, userMsg)
 
 	// 4. Call your workflow
 	// Note: You must pass 'userMsg' and 'sessionID' to the workflow
 	// so the LLM actually receives the text.
-	result, err := s.workflow.Run(ctx, "default-session", userMsg, isVision)
+	result, err := s.workflow.Run(ctx, "default-session", userMsg, isVision, imageData)
 	if err != nil {
 		log.Printf("Workflow error: %v", err)
 		return nil, err

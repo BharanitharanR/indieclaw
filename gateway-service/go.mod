@@ -5,6 +5,7 @@ go 1.26
 require (
 	github.com/Protocol-Lattice/go-agent v1.14.1
 	github.com/mark3labs/mcp-go v0.56.0
+	github.com/ollama/ollama v0.12.5
 	google.golang.org/grpc v1.82.0
 	google.golang.org/protobuf v1.36.11
 )
@@ -48,7 +49,6 @@ require (
 	github.com/modern-go/reflect2 v1.0.2 // indirect
 	github.com/montanaflynn/stats v0.0.0-20171201202039-1bf9dbcd8cbe // indirect
 	github.com/neo4j/neo4j-go-driver/v5 v5.28.4 // indirect
-	github.com/ollama/ollama v0.12.5 // indirect
 	github.com/openconfig/gnmi v0.14.1 // indirect
 	github.com/pion/datachannel v1.5.8 // indirect
 	github.com/pion/dtls/v2 v2.2.12 // indirect
