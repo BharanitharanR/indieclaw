@@ -4,7 +4,7 @@
 // 	protoc        v5.29.3
 // source: proto/gateway/v1/gateway.proto
 
-package gatewayv1
+package v1
 
 import (
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
@@ -21,77 +21,16 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-type ChatMessage struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Role          string                 `protobuf:"bytes,1,opt,name=role,proto3" json:"role,omitempty"` // "user", "assistant", "system"
-	Content       string                 `protobuf:"bytes,2,opt,name=content,proto3" json:"content,omitempty"`
-	ImagesBase64  []string               `protobuf:"bytes,3,rep,name=images_base64,json=imagesBase64,proto3" json:"images_base64,omitempty"` // Optional base64 images
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *ChatMessage) Reset() {
-	*x = ChatMessage{}
-	mi := &file_proto_gateway_v1_gateway_proto_msgTypes[0]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *ChatMessage) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*ChatMessage) ProtoMessage() {}
-
-func (x *ChatMessage) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_gateway_v1_gateway_proto_msgTypes[0]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use ChatMessage.ProtoReflect.Descriptor instead.
-func (*ChatMessage) Descriptor() ([]byte, []int) {
-	return file_proto_gateway_v1_gateway_proto_rawDescGZIP(), []int{0}
-}
-
-func (x *ChatMessage) GetRole() string {
-	if x != nil {
-		return x.Role
-	}
-	return ""
-}
-
-func (x *ChatMessage) GetContent() string {
-	if x != nil {
-		return x.Content
-	}
-	return ""
-}
-
-func (x *ChatMessage) GetImagesBase64() []string {
-	if x != nil {
-		return x.ImagesBase64
-	}
-	return nil
-}
-
 type ChatRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	SessionId     string                 `protobuf:"bytes,1,opt,name=session_id,json=sessionId,proto3" json:"session_id,omitempty"` // Unique ID to keep track of user context
-	Messages      []*ChatMessage         `protobuf:"bytes,2,rep,name=messages,proto3" json:"messages,omitempty"`
+	Messages      []*Message             `protobuf:"bytes,1,rep,name=messages,proto3" json:"messages,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *ChatRequest) Reset() {
 	*x = ChatRequest{}
-	mi := &file_proto_gateway_v1_gateway_proto_msgTypes[1]
+	mi := &file_proto_gateway_v1_gateway_proto_msgTypes[0]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -103,7 +42,7 @@ func (x *ChatRequest) String() string {
 func (*ChatRequest) ProtoMessage() {}
 
 func (x *ChatRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_gateway_v1_gateway_proto_msgTypes[1]
+	mi := &file_proto_gateway_v1_gateway_proto_msgTypes[0]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -116,27 +55,79 @@ func (x *ChatRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ChatRequest.ProtoReflect.Descriptor instead.
 func (*ChatRequest) Descriptor() ([]byte, []int) {
-	return file_proto_gateway_v1_gateway_proto_rawDescGZIP(), []int{1}
+	return file_proto_gateway_v1_gateway_proto_rawDescGZIP(), []int{0}
 }
 
-func (x *ChatRequest) GetSessionId() string {
-	if x != nil {
-		return x.SessionId
-	}
-	return ""
-}
-
-func (x *ChatRequest) GetMessages() []*ChatMessage {
+func (x *ChatRequest) GetMessages() []*Message {
 	if x != nil {
 		return x.Messages
 	}
 	return nil
 }
 
+type Message struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Role          string                 `protobuf:"bytes,1,opt,name=role,proto3" json:"role,omitempty"`
+	Content       string                 `protobuf:"bytes,2,opt,name=content,proto3" json:"content,omitempty"`
+	Images        []string               `protobuf:"bytes,3,rep,name=images,proto3" json:"images,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *Message) Reset() {
+	*x = Message{}
+	mi := &file_proto_gateway_v1_gateway_proto_msgTypes[1]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *Message) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*Message) ProtoMessage() {}
+
+func (x *Message) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_gateway_v1_gateway_proto_msgTypes[1]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use Message.ProtoReflect.Descriptor instead.
+func (*Message) Descriptor() ([]byte, []int) {
+	return file_proto_gateway_v1_gateway_proto_rawDescGZIP(), []int{1}
+}
+
+func (x *Message) GetRole() string {
+	if x != nil {
+		return x.Role
+	}
+	return ""
+}
+
+func (x *Message) GetContent() string {
+	if x != nil {
+		return x.Content
+	}
+	return ""
+}
+
+func (x *Message) GetImages() []string {
+	if x != nil {
+		return x.Images
+	}
+	return nil
+}
+
 type ChatResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Reply         string                 `protobuf:"bytes,1,opt,name=reply,proto3" json:"reply,omitempty"`                          // Final message generated by Primary LLM
-	UsedTools     []string               `protobuf:"bytes,2,rep,name=used_tools,json=usedTools,proto3" json:"used_tools,omitempty"` // Names of tools utilized in fulfilling prompt
+	Message       *Message               `protobuf:"bytes,1,opt,name=message,proto3" json:"message,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -171,16 +162,9 @@ func (*ChatResponse) Descriptor() ([]byte, []int) {
 	return file_proto_gateway_v1_gateway_proto_rawDescGZIP(), []int{2}
 }
 
-func (x *ChatResponse) GetReply() string {
+func (x *ChatResponse) GetMessage() *Message {
 	if x != nil {
-		return x.Reply
-	}
-	return ""
-}
-
-func (x *ChatResponse) GetUsedTools() []string {
-	if x != nil {
-		return x.UsedTools
+		return x.Message
 	}
 	return nil
 }
@@ -190,21 +174,17 @@ var File_proto_gateway_v1_gateway_proto protoreflect.FileDescriptor
 const file_proto_gateway_v1_gateway_proto_rawDesc = "" +
 	"\n" +
 	"\x1eproto/gateway/v1/gateway.proto\x12\n" +
-	"gateway.v1\"`\n" +
-	"\vChatMessage\x12\x12\n" +
+	"gateway.v1\">\n" +
+	"\vChatRequest\x12/\n" +
+	"\bmessages\x18\x01 \x03(\v2\x13.gateway.v1.MessageR\bmessages\"O\n" +
+	"\aMessage\x12\x12\n" +
 	"\x04role\x18\x01 \x01(\tR\x04role\x12\x18\n" +
-	"\acontent\x18\x02 \x01(\tR\acontent\x12#\n" +
-	"\rimages_base64\x18\x03 \x03(\tR\fimagesBase64\"a\n" +
-	"\vChatRequest\x12\x1d\n" +
-	"\n" +
-	"session_id\x18\x01 \x01(\tR\tsessionId\x123\n" +
-	"\bmessages\x18\x02 \x03(\v2\x17.gateway.v1.ChatMessageR\bmessages\"C\n" +
-	"\fChatResponse\x12\x14\n" +
-	"\x05reply\x18\x01 \x01(\tR\x05reply\x12\x1d\n" +
-	"\n" +
-	"used_tools\x18\x02 \x03(\tR\tusedTools2K\n" +
-	"\x0eGatewayService\x129\n" +
-	"\x04Chat\x12\x17.gateway.v1.ChatRequest\x1a\x18.gateway.v1.ChatResponseB,Z*gateway-service/proto/gateway/v1;gatewayv1b\x06proto3"
+	"\acontent\x18\x02 \x01(\tR\acontent\x12\x16\n" +
+	"\x06images\x18\x03 \x03(\tR\x06images\"=\n" +
+	"\fChatResponse\x12-\n" +
+	"\amessage\x18\x01 \x01(\v2\x13.gateway.v1.MessageR\amessage2M\n" +
+	"\x0eGatewayService\x12;\n" +
+	"\x04Chat\x12\x17.gateway.v1.ChatRequest\x1a\x18.gateway.v1.ChatResponse\"\x00B\"Z gateway-service/proto/gateway/v1b\x06proto3"
 
 var (
 	file_proto_gateway_v1_gateway_proto_rawDescOnce sync.Once
@@ -220,19 +200,20 @@ func file_proto_gateway_v1_gateway_proto_rawDescGZIP() []byte {
 
 var file_proto_gateway_v1_gateway_proto_msgTypes = make([]protoimpl.MessageInfo, 3)
 var file_proto_gateway_v1_gateway_proto_goTypes = []any{
-	(*ChatMessage)(nil),  // 0: gateway.v1.ChatMessage
-	(*ChatRequest)(nil),  // 1: gateway.v1.ChatRequest
+	(*ChatRequest)(nil),  // 0: gateway.v1.ChatRequest
+	(*Message)(nil),      // 1: gateway.v1.Message
 	(*ChatResponse)(nil), // 2: gateway.v1.ChatResponse
 }
 var file_proto_gateway_v1_gateway_proto_depIdxs = []int32{
-	0, // 0: gateway.v1.ChatRequest.messages:type_name -> gateway.v1.ChatMessage
-	1, // 1: gateway.v1.GatewayService.Chat:input_type -> gateway.v1.ChatRequest
-	2, // 2: gateway.v1.GatewayService.Chat:output_type -> gateway.v1.ChatResponse
-	2, // [2:3] is the sub-list for method output_type
-	1, // [1:2] is the sub-list for method input_type
-	1, // [1:1] is the sub-list for extension type_name
-	1, // [1:1] is the sub-list for extension extendee
-	0, // [0:1] is the sub-list for field type_name
+	1, // 0: gateway.v1.ChatRequest.messages:type_name -> gateway.v1.Message
+	1, // 1: gateway.v1.ChatResponse.message:type_name -> gateway.v1.Message
+	0, // 2: gateway.v1.GatewayService.Chat:input_type -> gateway.v1.ChatRequest
+	2, // 3: gateway.v1.GatewayService.Chat:output_type -> gateway.v1.ChatResponse
+	3, // [3:4] is the sub-list for method output_type
+	2, // [2:3] is the sub-list for method input_type
+	2, // [2:2] is the sub-list for extension type_name
+	2, // [2:2] is the sub-list for extension extendee
+	0, // [0:2] is the sub-list for field type_name
 }
 
 func init() { file_proto_gateway_v1_gateway_proto_init() }

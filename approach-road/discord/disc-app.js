@@ -1,15 +1,9 @@
 require("dotenv").config();
+const { Client, GatewayIntentBits } = require('discord.js');
+const axios = require('axios'); // Still used for image downloading & location
+const grpcClient = require('./grpcClent'); // Import the gRPC client
 
 const DISCORD_TOKEN = process.env.DISCORD_TOKEN;
-const { Client, GatewayIntentBits } = require('discord.js');
-const axios = require('axios');
-
-// Configuration
-const GO_GATEWAY_URL = 'http://127.0.0.1:8080/api/v1/chat';
-const TEXT_MODEL = 'qwen3:8b';
-
-
-// Initialize Discord Client with required Intents
 const client = new Client({
     intents: [
         GatewayIntentBits.Guilds,
@@ -31,61 +25,74 @@ async function getCurrentLocation() {
 client.once('ready', () => {
     console.log(`✅ Logged in as ${client.user.tag}!`);
 });
+
 client.on('messageCreate', async (message) => {
     if (message.author.bot) return;
 
-    // 1. Check if we should ignore this message entirely
-    // We only process if it starts with Jambu:: OR if it has an image
-    const hasTrigger = message.content.trim().startsWith("Jambu::");
+    // 1. Triggers
+    const isMention = message.mentions.has(client.user);
+    const startsWithJambu = message.content.trim().startsWith("Jambu::");
     const hasImage = message.attachments.size > 0;
 
-    if (!hasTrigger && !hasImage) return;
+    if (!isMention && !startsWithJambu && !hasImage) return;
 
-    console.log(`✅ Message accepted. Trigger: ${hasTrigger}, Images: ${message.attachments.size}`);
+    // 2. Prepare Prompt
+    let promptText = message.content
+        .replace(/^Jambu::\s*/i, '')
+        .replace(new RegExp(`<@!?${client.user.id}>\\s*`, 'i'), '')
+        .trim();
 
-    // 2. Extract prompt (remove Jambu:: if it exists)
-    let promptText = message.content.replace(/^Jambu::\s*/i, '').trim();
-    
     // 3. Process Images
     let base64Images = [];
     if (hasImage) {
         for (const [id, attachment] of message.attachments) {
             if (attachment.contentType?.startsWith('image/')) {
                 try {
-                    console.log(`Downloading: ${attachment.url}`);
                     const response = await axios.get(attachment.url, { responseType: 'arraybuffer' });
                     base64Images.push(Buffer.from(response.data, 'binary').toString('base64'));
-                } catch (err) {
-                    console.error("Download failed:", err);
-                }
+                } catch (err) { console.error("Image download failed:", err); }
             }
         }
     }
 
-    // 4. Default Prompting
-    if (!promptText && hasImage) {
-        promptText = "Describe this image in detail.";
-    } else if (!promptText && !hasImage) {
-        return; // Nothing to do
-    }
+    if (!promptText && hasImage) promptText = "Describe this image in detail.";
+    if (!promptText && !hasImage) return;
 
-    // 5. Send to Gateway
+    const location = await getCurrentLocation();
+    const finalPrompt = `Current Location: ${location}. \nInstruction: ${promptText}`;
+
+    // 4. Send via gRPC
     await message.channel.sendTyping();
-    const payload = {
-        model: base64Images.length > 0 ? "gemma4:e2b" : "qwen3:8b",
-        messages: [{ role: "user", content: `Instruction: ${promptText}`, images: base64Images }],
-        stream: false
+    
+    const request = {
+        messages: [{ 
+            role: "user", 
+            content: finalPrompt, 
+            images: base64Images 
+        }]
     };
 
-    try {
-        const response = await axios.post(GO_GATEWAY_URL, payload, { timeout: 180000 });
-        base64Images = [];
-        await message.reply(response.data?.message?.content || "No reply.");
-    } catch (error) {
-        console.error("Gateway Error:", error.message);
-        base64Images = [];
-        await message.reply("Error processing your request.");
-    }
+    grpcClient.chat(request, async (err, response) => {
+        if (err) {
+            console.error("gRPC Error:", err);
+            await message.reply("⚠️ Error communicating with the backend.");
+        } else {
+            await message.reply(response.message?.content || "No reply.");
+        }
+    });
 });
 
-client.login(DISCORD_TOKEN);
+async function loginWithRetry(retries = 5, delayMs = 5000) {
+    for (let i = 0; i < retries; i++) {
+        try {
+            await client.login(DISCORD_TOKEN);
+            return;
+        } catch (err) {
+            console.error(`Login failed: ${err.message}`);
+            await new Promise(r => setTimeout(r, delayMs));
+        }
+    }
+    process.exit(1);
+}
+
+loginWithRetry();

@@ -4,7 +4,7 @@
 // - protoc             v5.29.3
 // source: proto/gateway/v1/gateway.proto
 
-package gatewayv1
+package v1
 
 import (
 	context "context"
@@ -25,8 +25,6 @@ const (
 // GatewayServiceClient is the client API for GatewayService service.
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
-//
-// The primary gRPC service exposed by the Gateway
 type GatewayServiceClient interface {
 	Chat(ctx context.Context, in *ChatRequest, opts ...grpc.CallOption) (*ChatResponse, error)
 }
@@ -52,8 +50,6 @@ func (c *gatewayServiceClient) Chat(ctx context.Context, in *ChatRequest, opts .
 // GatewayServiceServer is the server API for GatewayService service.
 // All implementations must embed UnimplementedGatewayServiceServer
 // for forward compatibility.
-//
-// The primary gRPC service exposed by the Gateway
 type GatewayServiceServer interface {
 	Chat(context.Context, *ChatRequest) (*ChatResponse, error)
 	mustEmbedUnimplementedGatewayServiceServer()
