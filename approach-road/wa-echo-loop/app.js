@@ -33,11 +33,11 @@ waClient.on('ready', () => console.log('✅ WhatsApp Bot ready!'));
 
 async function handleIncomingMessage(msg) {
     if (msg.isStatus || msg.from === 'status@broadcast' )  return;
-    if (msg.from.includes("@g.us") || !msg.body.startsWith("Jambu::") || !msg.from.includes("919361315379@c.us")) return;
+    if (msg.from.includes("@g.us") || !msg.body.startsWith("Jambu") || !msg.from.includes("919361315379@c.us")) return;
 
     let targetModel = TEXT_MODEL;
     let base64Images = [];
-    let promptText = msg.body.replace(/^Jambu::\s*/, '').trim();
+    let promptText = msg.body.replace(/^Jambu\s*/, '').trim();
 
     try {
         if (msg.hasMedia) {

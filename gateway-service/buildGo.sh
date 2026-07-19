@@ -5,6 +5,7 @@
 export PATH=$PATH:$(go env GOPATH)/bin
 export TEXT_MODEL="qwen3:8b"
 export VISION_MODEL="llava:7b"
+export EMBEDDING_MODEL="nomic-embed-text"
 # Go plugins
 go install google.golang.org/protobuf/cmd/protoc-gen-go@latest
 go install google.golang.org/grpc/cmd/protoc-gen-grpc-go@latest

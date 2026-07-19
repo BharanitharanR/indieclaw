@@ -77,7 +77,9 @@ client.on('messageCreate', async (message) => {
             console.error("gRPC Error:", err);
             await message.reply("⚠️ Error communicating with the backend.");
         } else {
-            await message.reply(response.message?.content || "No reply.");
+            
+           //  await message.reply(response.message?.content || "No reply.");
+            await sendLongMessage(message, response.message?.content || "No reply.");
         }
     });
 });
@@ -94,5 +96,16 @@ async function loginWithRetry(retries = 5, delayMs = 5000) {
     }
     process.exit(1);
 }
+async function sendLongMessage(message, content) {
+    if (content.length <= 2000) {
+        return message.reply(content);
+    }
 
+    // Split into chunks of 1900 to ensure we don't hit the limit
+    const chunks = content.match(/.{1,1900}(\n|$)/gs) || [content];
+    
+    for (const chunk of chunks) {
+        await message.channel.send(chunk);
+    }
+}
 loginWithRetry();
