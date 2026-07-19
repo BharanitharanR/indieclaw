@@ -48,7 +48,7 @@ require (
 	github.com/mitchellh/colorstring v0.0.0-20190213212951-d06e56a500db // indirect
 	github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd // indirect
 	github.com/modern-go/reflect2 v1.0.2 // indirect
-	github.com/montanaflynn/stats v0.0.0-20171201202039-1bf9dbcd8cbe // indirect
+	github.com/montanaflynn/stats v0.7.1 // indirect
 	github.com/neo4j/neo4j-go-driver/v5 v5.28.4 // indirect
 	github.com/openconfig/gnmi v0.14.1 // indirect
 	github.com/pion/datachannel v1.5.8 // indirect
@@ -91,8 +91,8 @@ require (
 	github.com/xdg-go/stringprep v1.0.4 // indirect
 	github.com/yalue/onnxruntime_go v1.7.0 // indirect
 	github.com/yosida95/uritemplate/v3 v3.0.2 // indirect
-	github.com/youmark/pkcs8 v0.0.0-20181117223130-1be2e3e5546d // indirect
-	go.mongodb.org/mongo-driver v1.13.1 // indirect
+	github.com/youmark/pkcs8 v0.0.0-20240726163527-a2c0da244d78 // indirect
+	go.mongodb.org/mongo-driver v1.17.7 // indirect
 	go.opentelemetry.io/auto/sdk v1.2.1 // indirect
 	go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc v0.61.0 // indirect
 	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.68.0 // indirect
