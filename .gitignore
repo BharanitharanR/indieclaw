@@ -9,3 +9,4 @@
 /approach-road/wa-echo-loop/node_modules
 approach-road/discord/.env
 /gateway-service/bin
+/gateway-service/storage
