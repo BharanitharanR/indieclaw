@@ -12,7 +12,7 @@ const client = new Client({
     ]
 });
 
-// Helper to fetch location
+// Helper to fetch location //
 async function getCurrentLocation() {
     try {
         const response = await axios.get('http://ip-api.com/json/');
