@@ -1,7 +1,7 @@
 require("dotenv").config();
 const { Client, GatewayIntentBits } = require('discord.js');
 const axios = require('axios'); // Still used for image downloading & location
-const grpcClient = require('./grpcClent'); // Import the gRPC client
+const grpcClient = require('./grpcClient.js'); // Import the gRPC client
 
 const DISCORD_TOKEN = process.env.DISCORD_TOKEN;
 const client = new Client({
@@ -23,7 +23,7 @@ async function getCurrentLocation() {
 }
 
 client.once('ready', () => {
-    console.log(`✅ Logged in as ${client.user.tag}!`);
+    console.log(`Logged in as ${client.user.tag}!`);
 });
 
 client.on('messageCreate', async (message) => {
