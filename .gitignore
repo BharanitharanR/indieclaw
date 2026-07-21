@@ -10,3 +10,9 @@
 approach-road/discord/.env
 /gateway-service/bin
 /gateway-service/storage
+/gateway-service/bin
+/gateway-service/bin
+gateway-service/.qdrant-initialized
+gateway-service/bin/orchestrator
+vectorDB/qdrant/
+gateway-service/bin/orchestrator
