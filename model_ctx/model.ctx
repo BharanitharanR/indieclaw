@@ -1,0 +1,5 @@
+# My custom Modelfile to increase context length
+FROM qwen3:8b
+
+# Set the context window size (e.g., 4096, 8192, 16384, etc.)
+PARAMETER num_ctx 16384

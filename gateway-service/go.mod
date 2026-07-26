@@ -6,6 +6,7 @@ require (
 	github.com/Protocol-Lattice/go-agent v1.14.1
 	github.com/google/uuid v1.6.0
 	github.com/mark3labs/mcp-go v0.56.0
+	github.com/modelcontextprotocol/go-sdk v1.6.1
 	github.com/ollama/ollama v0.12.5
 	github.com/qdrant/go-client v1.18.3
 	google.golang.org/grpc v1.82.0
@@ -32,7 +33,7 @@ require (
 	github.com/golang/snappy v0.0.4 // indirect
 	github.com/google/generative-ai-go v0.20.1 // indirect
 	github.com/google/go-cmp v0.7.0 // indirect
-	github.com/google/jsonschema-go v0.4.2 // indirect
+	github.com/google/jsonschema-go v0.4.3 // indirect
 	github.com/google/s2a-go v0.1.9 // indirect
 	github.com/googleapis/enterprise-certificate-proxy v0.3.6 // indirect
 	github.com/googleapis/gax-go/v2 v2.15.0 // indirect
@@ -74,6 +75,8 @@ require (
 	github.com/sashabaranov/go-openai v1.41.2 // indirect
 	github.com/schollz/progressbar/v2 v2.15.0 // indirect
 	github.com/schollz/progressbar/v3 v3.14.1 // indirect
+	github.com/segmentio/asm v1.1.3 // indirect
+	github.com/segmentio/encoding v0.5.4 // indirect
 	github.com/spf13/cast v1.7.1 // indirect
 	github.com/spyzhov/ajson v0.8.0 // indirect
 	github.com/stretchr/testify v1.11.1 // indirect

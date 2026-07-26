@@ -1,0 +1,1 @@
+ollama launch pi --model qwen3:8b-16k

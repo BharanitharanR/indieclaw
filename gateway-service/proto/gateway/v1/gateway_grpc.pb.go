@@ -19,7 +19,10 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	GatewayService_Chat_FullMethodName = "/gateway.v1.GatewayService/Chat"
+	GatewayService_Chat_FullMethodName         = "/gateway.v1.GatewayService/Chat"
+	GatewayService_ListTools_FullMethodName    = "/gateway.v1.GatewayService/ListTools"
+	GatewayService_ExecuteTool_FullMethodName  = "/gateway.v1.GatewayService/ExecuteTool"
+	GatewayService_ListMCPTools_FullMethodName = "/gateway.v1.GatewayService/ListMCPTools"
 )
 
 // GatewayServiceClient is the client API for GatewayService service.
@@ -27,6 +30,9 @@ const (
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type GatewayServiceClient interface {
 	Chat(ctx context.Context, in *ChatRequest, opts ...grpc.CallOption) (*ChatResponse, error)
+	ListTools(ctx context.Context, in *ListToolsRequest, opts ...grpc.CallOption) (*ListToolsResponse, error)
+	ExecuteTool(ctx context.Context, in *ToolExecutionRequest, opts ...grpc.CallOption) (*ToolExecutionResponse, error)
+	ListMCPTools(ctx context.Context, in *ListMCPToolsRequest, opts ...grpc.CallOption) (*ListMCPToolsResponse, error)
 }
 
 type gatewayServiceClient struct {
@@ -47,11 +53,44 @@ func (c *gatewayServiceClient) Chat(ctx context.Context, in *ChatRequest, opts .
 	return out, nil
 }
 
+func (c *gatewayServiceClient) ListTools(ctx context.Context, in *ListToolsRequest, opts ...grpc.CallOption) (*ListToolsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ListToolsResponse)
+	err := c.cc.Invoke(ctx, GatewayService_ListTools_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *gatewayServiceClient) ExecuteTool(ctx context.Context, in *ToolExecutionRequest, opts ...grpc.CallOption) (*ToolExecutionResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ToolExecutionResponse)
+	err := c.cc.Invoke(ctx, GatewayService_ExecuteTool_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *gatewayServiceClient) ListMCPTools(ctx context.Context, in *ListMCPToolsRequest, opts ...grpc.CallOption) (*ListMCPToolsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ListMCPToolsResponse)
+	err := c.cc.Invoke(ctx, GatewayService_ListMCPTools_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // GatewayServiceServer is the server API for GatewayService service.
 // All implementations must embed UnimplementedGatewayServiceServer
 // for forward compatibility.
 type GatewayServiceServer interface {
 	Chat(context.Context, *ChatRequest) (*ChatResponse, error)
+	ListTools(context.Context, *ListToolsRequest) (*ListToolsResponse, error)
+	ExecuteTool(context.Context, *ToolExecutionRequest) (*ToolExecutionResponse, error)
+	ListMCPTools(context.Context, *ListMCPToolsRequest) (*ListMCPToolsResponse, error)
 	mustEmbedUnimplementedGatewayServiceServer()
 }
 
@@ -64,6 +103,15 @@ type UnimplementedGatewayServiceServer struct{}
 
 func (UnimplementedGatewayServiceServer) Chat(context.Context, *ChatRequest) (*ChatResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method Chat not implemented")
+}
+func (UnimplementedGatewayServiceServer) ListTools(context.Context, *ListToolsRequest) (*ListToolsResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ListTools not implemented")
+}
+func (UnimplementedGatewayServiceServer) ExecuteTool(context.Context, *ToolExecutionRequest) (*ToolExecutionResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ExecuteTool not implemented")
+}
+func (UnimplementedGatewayServiceServer) ListMCPTools(context.Context, *ListMCPToolsRequest) (*ListMCPToolsResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ListMCPTools not implemented")
 }
 func (UnimplementedGatewayServiceServer) mustEmbedUnimplementedGatewayServiceServer() {}
 func (UnimplementedGatewayServiceServer) testEmbeddedByValue()                        {}
@@ -104,6 +152,60 @@ func _GatewayService_Chat_Handler(srv interface{}, ctx context.Context, dec func
 	return interceptor(ctx, in, info, handler)
 }
 
+func _GatewayService_ListTools_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListToolsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(GatewayServiceServer).ListTools(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: GatewayService_ListTools_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(GatewayServiceServer).ListTools(ctx, req.(*ListToolsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _GatewayService_ExecuteTool_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ToolExecutionRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(GatewayServiceServer).ExecuteTool(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: GatewayService_ExecuteTool_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(GatewayServiceServer).ExecuteTool(ctx, req.(*ToolExecutionRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _GatewayService_ListMCPTools_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListMCPToolsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(GatewayServiceServer).ListMCPTools(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: GatewayService_ListMCPTools_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(GatewayServiceServer).ListMCPTools(ctx, req.(*ListMCPToolsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // GatewayService_ServiceDesc is the grpc.ServiceDesc for GatewayService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -114,6 +216,18 @@ var GatewayService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "Chat",
 			Handler:    _GatewayService_Chat_Handler,
+		},
+		{
+			MethodName: "ListTools",
+			Handler:    _GatewayService_ListTools_Handler,
+		},
+		{
+			MethodName: "ExecuteTool",
+			Handler:    _GatewayService_ExecuteTool_Handler,
+		},
+		{
+			MethodName: "ListMCPTools",
+			Handler:    _GatewayService_ListMCPTools_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

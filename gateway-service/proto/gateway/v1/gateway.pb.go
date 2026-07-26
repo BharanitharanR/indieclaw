@@ -169,6 +169,406 @@ func (x *ChatResponse) GetMessage() *Message {
 	return nil
 }
 
+type ListToolsRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListToolsRequest) Reset() {
+	*x = ListToolsRequest{}
+	mi := &file_proto_gateway_v1_gateway_proto_msgTypes[3]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListToolsRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListToolsRequest) ProtoMessage() {}
+
+func (x *ListToolsRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_gateway_v1_gateway_proto_msgTypes[3]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListToolsRequest.ProtoReflect.Descriptor instead.
+func (*ListToolsRequest) Descriptor() ([]byte, []int) {
+	return file_proto_gateway_v1_gateway_proto_rawDescGZIP(), []int{3}
+}
+
+type Tool struct {
+	state           protoimpl.MessageState `protogen:"open.v1"`
+	Name            string                 `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	Description     string                 `protobuf:"bytes,2,opt,name=description,proto3" json:"description,omitempty"`
+	InputSchemaJson string                 `protobuf:"bytes,3,opt,name=input_schema_json,json=inputSchemaJson,proto3" json:"input_schema_json,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
+}
+
+func (x *Tool) Reset() {
+	*x = Tool{}
+	mi := &file_proto_gateway_v1_gateway_proto_msgTypes[4]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *Tool) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*Tool) ProtoMessage() {}
+
+func (x *Tool) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_gateway_v1_gateway_proto_msgTypes[4]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use Tool.ProtoReflect.Descriptor instead.
+func (*Tool) Descriptor() ([]byte, []int) {
+	return file_proto_gateway_v1_gateway_proto_rawDescGZIP(), []int{4}
+}
+
+func (x *Tool) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *Tool) GetDescription() string {
+	if x != nil {
+		return x.Description
+	}
+	return ""
+}
+
+func (x *Tool) GetInputSchemaJson() string {
+	if x != nil {
+		return x.InputSchemaJson
+	}
+	return ""
+}
+
+type ListToolsResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Tools         []*Tool                `protobuf:"bytes,1,rep,name=tools,proto3" json:"tools,omitempty"`
+	ToolsJson     string                 `protobuf:"bytes,2,opt,name=tools_json,json=toolsJson,proto3" json:"tools_json,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListToolsResponse) Reset() {
+	*x = ListToolsResponse{}
+	mi := &file_proto_gateway_v1_gateway_proto_msgTypes[5]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListToolsResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListToolsResponse) ProtoMessage() {}
+
+func (x *ListToolsResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_gateway_v1_gateway_proto_msgTypes[5]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListToolsResponse.ProtoReflect.Descriptor instead.
+func (*ListToolsResponse) Descriptor() ([]byte, []int) {
+	return file_proto_gateway_v1_gateway_proto_rawDescGZIP(), []int{5}
+}
+
+func (x *ListToolsResponse) GetTools() []*Tool {
+	if x != nil {
+		return x.Tools
+	}
+	return nil
+}
+
+func (x *ListToolsResponse) GetToolsJson() string {
+	if x != nil {
+		return x.ToolsJson
+	}
+	return ""
+}
+
+type ToolExecutionRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	ToolName      string                 `protobuf:"bytes,1,opt,name=tool_name,json=toolName,proto3" json:"tool_name,omitempty"`
+	InputJson     string                 `protobuf:"bytes,2,opt,name=input_json,json=inputJson,proto3" json:"input_json,omitempty"`
+	SessionId     string                 `protobuf:"bytes,3,opt,name=session_id,json=sessionId,proto3" json:"session_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ToolExecutionRequest) Reset() {
+	*x = ToolExecutionRequest{}
+	mi := &file_proto_gateway_v1_gateway_proto_msgTypes[6]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ToolExecutionRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ToolExecutionRequest) ProtoMessage() {}
+
+func (x *ToolExecutionRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_gateway_v1_gateway_proto_msgTypes[6]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ToolExecutionRequest.ProtoReflect.Descriptor instead.
+func (*ToolExecutionRequest) Descriptor() ([]byte, []int) {
+	return file_proto_gateway_v1_gateway_proto_rawDescGZIP(), []int{6}
+}
+
+func (x *ToolExecutionRequest) GetToolName() string {
+	if x != nil {
+		return x.ToolName
+	}
+	return ""
+}
+
+func (x *ToolExecutionRequest) GetInputJson() string {
+	if x != nil {
+		return x.InputJson
+	}
+	return ""
+}
+
+func (x *ToolExecutionRequest) GetSessionId() string {
+	if x != nil {
+		return x.SessionId
+	}
+	return ""
+}
+
+type ToolExecutionResponse struct {
+	state           protoimpl.MessageState `protogen:"open.v1"`
+	Success         bool                   `protobuf:"varint,1,opt,name=success,proto3" json:"success,omitempty"`
+	ResultJson      string                 `protobuf:"bytes,2,opt,name=result_json,json=resultJson,proto3" json:"result_json,omitempty"`
+	Error           string                 `protobuf:"bytes,3,opt,name=error,proto3" json:"error,omitempty"`
+	ExecutionTimeMs int64                  `protobuf:"varint,4,opt,name=execution_time_ms,json=executionTimeMs,proto3" json:"execution_time_ms,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
+}
+
+func (x *ToolExecutionResponse) Reset() {
+	*x = ToolExecutionResponse{}
+	mi := &file_proto_gateway_v1_gateway_proto_msgTypes[7]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ToolExecutionResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ToolExecutionResponse) ProtoMessage() {}
+
+func (x *ToolExecutionResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_gateway_v1_gateway_proto_msgTypes[7]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ToolExecutionResponse.ProtoReflect.Descriptor instead.
+func (*ToolExecutionResponse) Descriptor() ([]byte, []int) {
+	return file_proto_gateway_v1_gateway_proto_rawDescGZIP(), []int{7}
+}
+
+func (x *ToolExecutionResponse) GetSuccess() bool {
+	if x != nil {
+		return x.Success
+	}
+	return false
+}
+
+func (x *ToolExecutionResponse) GetResultJson() string {
+	if x != nil {
+		return x.ResultJson
+	}
+	return ""
+}
+
+func (x *ToolExecutionResponse) GetError() string {
+	if x != nil {
+		return x.Error
+	}
+	return ""
+}
+
+func (x *ToolExecutionResponse) GetExecutionTimeMs() int64 {
+	if x != nil {
+		return x.ExecutionTimeMs
+	}
+	return 0
+}
+
+type ListMCPToolsRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListMCPToolsRequest) Reset() {
+	*x = ListMCPToolsRequest{}
+	mi := &file_proto_gateway_v1_gateway_proto_msgTypes[8]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListMCPToolsRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListMCPToolsRequest) ProtoMessage() {}
+
+func (x *ListMCPToolsRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_gateway_v1_gateway_proto_msgTypes[8]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListMCPToolsRequest.ProtoReflect.Descriptor instead.
+func (*ListMCPToolsRequest) Descriptor() ([]byte, []int) {
+	return file_proto_gateway_v1_gateway_proto_rawDescGZIP(), []int{8}
+}
+
+type ToolList struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Tools         []*Tool                `protobuf:"bytes,1,rep,name=tools,proto3" json:"tools,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ToolList) Reset() {
+	*x = ToolList{}
+	mi := &file_proto_gateway_v1_gateway_proto_msgTypes[9]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ToolList) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ToolList) ProtoMessage() {}
+
+func (x *ToolList) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_gateway_v1_gateway_proto_msgTypes[9]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ToolList.ProtoReflect.Descriptor instead.
+func (*ToolList) Descriptor() ([]byte, []int) {
+	return file_proto_gateway_v1_gateway_proto_rawDescGZIP(), []int{9}
+}
+
+func (x *ToolList) GetTools() []*Tool {
+	if x != nil {
+		return x.Tools
+	}
+	return nil
+}
+
+type ListMCPToolsResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	ToolsByServer map[string]*ToolList   `protobuf:"bytes,1,rep,name=tools_by_server,json=toolsByServer,proto3" json:"tools_by_server,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListMCPToolsResponse) Reset() {
+	*x = ListMCPToolsResponse{}
+	mi := &file_proto_gateway_v1_gateway_proto_msgTypes[10]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListMCPToolsResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListMCPToolsResponse) ProtoMessage() {}
+
+func (x *ListMCPToolsResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_gateway_v1_gateway_proto_msgTypes[10]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListMCPToolsResponse.ProtoReflect.Descriptor instead.
+func (*ListMCPToolsResponse) Descriptor() ([]byte, []int) {
+	return file_proto_gateway_v1_gateway_proto_rawDescGZIP(), []int{10}
+}
+
+func (x *ListMCPToolsResponse) GetToolsByServer() map[string]*ToolList {
+	if x != nil {
+		return x.ToolsByServer
+	}
+	return nil
+}
+
 var File_proto_gateway_v1_gateway_proto protoreflect.FileDescriptor
 
 const file_proto_gateway_v1_gateway_proto_rawDesc = "" +
@@ -182,9 +582,41 @@ const file_proto_gateway_v1_gateway_proto_rawDesc = "" +
 	"\acontent\x18\x02 \x01(\tR\acontent\x12\x16\n" +
 	"\x06images\x18\x03 \x03(\tR\x06images\"=\n" +
 	"\fChatResponse\x12-\n" +
-	"\amessage\x18\x01 \x01(\v2\x13.gateway.v1.MessageR\amessage2M\n" +
+	"\amessage\x18\x01 \x01(\v2\x13.gateway.v1.MessageR\amessage\"\x12\n" +
+	"\x10ListToolsRequest\"h\n" +
+	"\x04Tool\x12\x12\n" +
+	"\x04name\x18\x01 \x01(\tR\x04name\x12 \n" +
+	"\vdescription\x18\x02 \x01(\tR\vdescription\x12*\n" +
+	"\x11input_schema_json\x18\x03 \x01(\tR\x0finputSchemaJson\"Z\n" +
+	"\x11ListToolsResponse\x12&\n" +
+	"\x05tools\x18\x01 \x03(\v2\x10.gateway.v1.ToolR\x05tools\x12\x1d\n" +
+	"\n" +
+	"tools_json\x18\x02 \x01(\tR\ttoolsJson\"q\n" +
+	"\x14ToolExecutionRequest\x12\x1b\n" +
+	"\ttool_name\x18\x01 \x01(\tR\btoolName\x12\x1d\n" +
+	"\n" +
+	"input_json\x18\x02 \x01(\tR\tinputJson\x12\x1d\n" +
+	"\n" +
+	"session_id\x18\x03 \x01(\tR\tsessionId\"\x94\x01\n" +
+	"\x15ToolExecutionResponse\x12\x18\n" +
+	"\asuccess\x18\x01 \x01(\bR\asuccess\x12\x1f\n" +
+	"\vresult_json\x18\x02 \x01(\tR\n" +
+	"resultJson\x12\x14\n" +
+	"\x05error\x18\x03 \x01(\tR\x05error\x12*\n" +
+	"\x11execution_time_ms\x18\x04 \x01(\x03R\x0fexecutionTimeMs\"\x15\n" +
+	"\x13ListMCPToolsRequest\"2\n" +
+	"\bToolList\x12&\n" +
+	"\x05tools\x18\x01 \x03(\v2\x10.gateway.v1.ToolR\x05tools\"\xcb\x01\n" +
+	"\x14ListMCPToolsResponse\x12[\n" +
+	"\x0ftools_by_server\x18\x01 \x03(\v23.gateway.v1.ListMCPToolsResponse.ToolsByServerEntryR\rtoolsByServer\x1aV\n" +
+	"\x12ToolsByServerEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12*\n" +
+	"\x05value\x18\x02 \x01(\v2\x14.gateway.v1.ToolListR\x05value:\x028\x012\xc4\x02\n" +
 	"\x0eGatewayService\x12;\n" +
-	"\x04Chat\x12\x17.gateway.v1.ChatRequest\x1a\x18.gateway.v1.ChatResponse\"\x00B\"Z gateway-service/proto/gateway/v1b\x06proto3"
+	"\x04Chat\x12\x17.gateway.v1.ChatRequest\x1a\x18.gateway.v1.ChatResponse\"\x00\x12J\n" +
+	"\tListTools\x12\x1c.gateway.v1.ListToolsRequest\x1a\x1d.gateway.v1.ListToolsResponse\"\x00\x12T\n" +
+	"\vExecuteTool\x12 .gateway.v1.ToolExecutionRequest\x1a!.gateway.v1.ToolExecutionResponse\"\x00\x12S\n" +
+	"\fListMCPTools\x12\x1f.gateway.v1.ListMCPToolsRequest\x1a .gateway.v1.ListMCPToolsResponse\"\x00B\"Z gateway-service/proto/gateway/v1b\x06proto3"
 
 var (
 	file_proto_gateway_v1_gateway_proto_rawDescOnce sync.Once
@@ -198,22 +630,41 @@ func file_proto_gateway_v1_gateway_proto_rawDescGZIP() []byte {
 	return file_proto_gateway_v1_gateway_proto_rawDescData
 }
 
-var file_proto_gateway_v1_gateway_proto_msgTypes = make([]protoimpl.MessageInfo, 3)
+var file_proto_gateway_v1_gateway_proto_msgTypes = make([]protoimpl.MessageInfo, 12)
 var file_proto_gateway_v1_gateway_proto_goTypes = []any{
-	(*ChatRequest)(nil),  // 0: gateway.v1.ChatRequest
-	(*Message)(nil),      // 1: gateway.v1.Message
-	(*ChatResponse)(nil), // 2: gateway.v1.ChatResponse
+	(*ChatRequest)(nil),           // 0: gateway.v1.ChatRequest
+	(*Message)(nil),               // 1: gateway.v1.Message
+	(*ChatResponse)(nil),          // 2: gateway.v1.ChatResponse
+	(*ListToolsRequest)(nil),      // 3: gateway.v1.ListToolsRequest
+	(*Tool)(nil),                  // 4: gateway.v1.Tool
+	(*ListToolsResponse)(nil),     // 5: gateway.v1.ListToolsResponse
+	(*ToolExecutionRequest)(nil),  // 6: gateway.v1.ToolExecutionRequest
+	(*ToolExecutionResponse)(nil), // 7: gateway.v1.ToolExecutionResponse
+	(*ListMCPToolsRequest)(nil),   // 8: gateway.v1.ListMCPToolsRequest
+	(*ToolList)(nil),              // 9: gateway.v1.ToolList
+	(*ListMCPToolsResponse)(nil),  // 10: gateway.v1.ListMCPToolsResponse
+	nil,                           // 11: gateway.v1.ListMCPToolsResponse.ToolsByServerEntry
 }
 var file_proto_gateway_v1_gateway_proto_depIdxs = []int32{
-	1, // 0: gateway.v1.ChatRequest.messages:type_name -> gateway.v1.Message
-	1, // 1: gateway.v1.ChatResponse.message:type_name -> gateway.v1.Message
-	0, // 2: gateway.v1.GatewayService.Chat:input_type -> gateway.v1.ChatRequest
-	2, // 3: gateway.v1.GatewayService.Chat:output_type -> gateway.v1.ChatResponse
-	3, // [3:4] is the sub-list for method output_type
-	2, // [2:3] is the sub-list for method input_type
-	2, // [2:2] is the sub-list for extension type_name
-	2, // [2:2] is the sub-list for extension extendee
-	0, // [0:2] is the sub-list for field type_name
+	1,  // 0: gateway.v1.ChatRequest.messages:type_name -> gateway.v1.Message
+	1,  // 1: gateway.v1.ChatResponse.message:type_name -> gateway.v1.Message
+	4,  // 2: gateway.v1.ListToolsResponse.tools:type_name -> gateway.v1.Tool
+	4,  // 3: gateway.v1.ToolList.tools:type_name -> gateway.v1.Tool
+	11, // 4: gateway.v1.ListMCPToolsResponse.tools_by_server:type_name -> gateway.v1.ListMCPToolsResponse.ToolsByServerEntry
+	9,  // 5: gateway.v1.ListMCPToolsResponse.ToolsByServerEntry.value:type_name -> gateway.v1.ToolList
+	0,  // 6: gateway.v1.GatewayService.Chat:input_type -> gateway.v1.ChatRequest
+	3,  // 7: gateway.v1.GatewayService.ListTools:input_type -> gateway.v1.ListToolsRequest
+	6,  // 8: gateway.v1.GatewayService.ExecuteTool:input_type -> gateway.v1.ToolExecutionRequest
+	8,  // 9: gateway.v1.GatewayService.ListMCPTools:input_type -> gateway.v1.ListMCPToolsRequest
+	2,  // 10: gateway.v1.GatewayService.Chat:output_type -> gateway.v1.ChatResponse
+	5,  // 11: gateway.v1.GatewayService.ListTools:output_type -> gateway.v1.ListToolsResponse
+	7,  // 12: gateway.v1.GatewayService.ExecuteTool:output_type -> gateway.v1.ToolExecutionResponse
+	10, // 13: gateway.v1.GatewayService.ListMCPTools:output_type -> gateway.v1.ListMCPToolsResponse
+	10, // [10:14] is the sub-list for method output_type
+	6,  // [6:10] is the sub-list for method input_type
+	6,  // [6:6] is the sub-list for extension type_name
+	6,  // [6:6] is the sub-list for extension extendee
+	0,  // [0:6] is the sub-list for field type_name
 }
 
 func init() { file_proto_gateway_v1_gateway_proto_init() }
@@ -227,7 +678,7 @@ func file_proto_gateway_v1_gateway_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_proto_gateway_v1_gateway_proto_rawDesc), len(file_proto_gateway_v1_gateway_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   3,
+			NumMessages:   12,
 			NumExtensions: 0,
 			NumServices:   1,
 		},
