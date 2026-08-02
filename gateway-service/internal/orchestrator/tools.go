@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+
+	"github.com/tmc/langchaingo/tools"
 )
 
 // ToolInput represents the structured input passed to a tool
@@ -331,4 +333,17 @@ func customDatabaseHandler(ctx context.Context, args map[string]interface{}) (in
 		"query":   query,
 		"results": []map[string]interface{}{}, // Replace with actual results
 	}, nil
+}
+
+func (tr *ToolRegistry) RegisterLangChainTool(tool tools.Tool) error {
+	def := &ToolDefinition{
+		Name:        tool.Name(),
+		Description: tool.Description(),
+		Handler: func(ctx context.Context, args map[string]interface{}) (interface{}, error) {
+			// Fallback execution bridge back to LangChain tool call format
+			argsBytes, _ := json.Marshal(args)
+			return tool.Call(ctx, string(argsBytes))
+		},
+	}
+	return tr.Register(def)
 }

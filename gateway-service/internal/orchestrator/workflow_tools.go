@@ -2,21 +2,16 @@ package orchestrator
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"log"
-	"regexp"
 	"strings"
-)
 
-// ToolExecutionStep represents a single tool invocation in the ReAct loop
-type ToolExecutionStep struct {
-	StepID   int                    `json:"step_id"`
-	ToolName string                 `json:"tool_name"`
-	Input    map[string]interface{} `json:"input"`
-	Result   interface{}            `json:"result,omitempty"`
-	Error    string                 `json:"error,omitempty"`
-}
+	"github.com/tmc/langchaingo/agents"
+	"github.com/tmc/langchaingo/chains"
+	"github.com/tmc/langchaingo/llms"
+	"github.com/tmc/langchaingo/schema"
+	"github.com/tmc/langchaingo/tools"
+)
 
 // ReActPlanWithTools extends the original plan to support tool calls
 type ReActPlanWithTools struct {
@@ -31,153 +26,134 @@ type ReActStepWithTools struct {
 	NeedsUserInput bool                   `json:"needs_user_input"`
 }
 
+// ToolExecutionStep represents a single tool invocation in the ReAct loop
+type ToolExecutionStep struct {
+	StepID   int                    `json:"step_id"`
+	ToolName string                 `json:"tool_name"`
+	Input    map[string]interface{} `json:"input"`
+	Result   interface{}            `json:"result,omitempty"`
+	Error    string                 `json:"error,omitempty"`
+}
+
 // InitializeToolRegistry sets up all available tools for the workflow
 func (w *AgentWorkflow) InitializeToolRegistry() *ToolRegistry {
 	registry := NewToolRegistry()
-
-	// Register built-in tools
-	_ = registry.Register(WebSearchTool())
-	_ = registry.Register(MathTool())
-	_ = registry.Register(FileFetchTool())
-	_ = registry.Register(HTTPCallTool())
-	_ = registry.Register(JSONParseTool())
-
-	// TODO: Register custom domain-specific tools here
-	// Example:
-	// _ = registry.Register(YourCustomDatabaseQueryTool())
-	// _ = registry.Register(YourCustomDataTransformTool())
-
 	log.Printf("✅ Tool registry initialized with %d tools", len(registry.tools))
 	return registry
 }
 
-// RunWithTools executes the core ReAct loop WITH tool support
 func (w *AgentWorkflow) RunWithTools(ctx context.Context, sessionID string, input string, isVision bool, imageBase64 string, toolRegistry *ToolRegistry) (string, error) {
+	handler := NewAgentHandler()
+
+	// 1. Handle Vision path
 	if isVision {
-		// Vision path remains unchanged
-		return w.Run(ctx, sessionID, input, isVision, imageBase64)
-	}
-
-	// --- TEXT AGENT: REACT LOOP WITH TOOLS ---
-
-	// Step 1: Enhanced planning that can identify tools
-	planPrompt := fmt.Sprintf(`You are an intelligent Assistant Planner with access to external tools.
-
-AVAILABLE TOOLS:
-%s
-
-Your goal is to answer the user or perform the task using tools when necessary.
-
-RULES:
-- If the task requires current web info, use "web_search"
-- If the task requires calculations, use "calculate"
-- If the task requires file access, use "fetch_file"
-- If the task requires API calls, use "http_call"
-- If the task requires JSON parsing, use "parse_json"
-- For general knowledge or analysis, proceed directly (no tool needed)
-- Only invoke tools when genuinely necessary
-
-Output your execution path STRICTLY as JSON:
-{
-  "steps": [
-    {
-      "id": 1,
-      "action": "Description of what to do",
-      "tool_name": "web_search",
-      "tool_input": {"query": "search term"},
-      "needs_user_input": false
-    }
-  ]
-}
-
-User Prompt: "%s"`, w.formatToolsForPrompt(toolRegistry), input)
-
-	rawPlanResp, err := w.textAgent.Generate(ctx, sessionID, planPrompt)
-	if err != nil {
-		return "", fmt.Errorf("planning phase generation failed: %w", err)
-	}
-
-	planString := extractString(rawPlanResp)
-	log.Printf("📋 Generated plan: %s", planString)
-
-	var plan ReActPlanWithTools
-	if err := json.Unmarshal([]byte(planString), &plan); err != nil {
-		log.Printf("WARN: Failed parsing plan JSON. Fallback to direct resolution. Error: %v Raw: %s", err, planString)
-		directResp, err := w.textAgent.Generate(ctx, sessionID, input)
-		return extractString(directResp), err
-	}
-
-	var observations []string
-	var toolExecutions []ToolExecutionStep
-
-	// Step 2: Execute steps with tool support
-	for _, step := range plan.Steps {
-		log.Printf("⚙️ ReAct Step [%d]: %s (Tool: %s, Needs Input: %t)", step.ID, step.Action, step.ToolName, step.NeedsUserInput)
-
-		if step.NeedsUserInput {
-			return fmt.Sprintf("⏸️ Paused for clarification: %s", step.Action), nil
+		contentParts := []llms.ContentPart{
+			llms.TextPart(input),
+			llms.ImageURLPart("data:image/jpeg;base64," + imageBase64),
 		}
 
-		var observation string
-		var toolExec ToolExecutionStep
-
-		// If a tool is specified, execute it
-		if step.ToolName != "" {
-			toolExec.StepID = step.ID
-			toolExec.ToolName = step.ToolName
-			toolExec.Input = step.ToolInput
-
-			toolOutput, err := toolRegistry.Execute(ctx, step.ToolName, ToolInput{Args: step.ToolInput})
-			toolExec.Result = toolOutput.Data
-			if err != nil {
-				toolExec.Error = err.Error()
-				log.Printf("❌ Tool execution failed: %v", err)
-			}
-
-			toolExecutions = append(toolExecutions, toolExec)
-
-			// Format tool result for LLM consumption
-			observation = fmt.Sprintf("Tool '%s' returned: %+v", step.ToolName, toolOutput.Data)
-		} else {
-			// No tool: proceed with direct LLM generation
-			executionTask := fmt.Sprintf("Task: %s. Provide the result or answer for this task.", step.Action)
-			actionResult, err := w.textAgent.Generate(ctx, sessionID, executionTask)
-			if err != nil {
-				return "", fmt.Errorf("action execution failed: %w", err)
-			}
-			observation = extractString(actionResult)
+		resp, err := w.visionAgent.GenerateContent(ctx, []llms.MessageContent{
+			{Role: llms.ChatMessageTypeHuman, Parts: contentParts},
+		})
+		if err != nil {
+			return "", err
 		}
-
-		log.Printf("✅ Observation: %s", observation)
-		observations = append(observations, observation)
+		if len(resp.Choices) > 0 {
+			return resp.Choices[0].Content, nil
+		}
+		return "", fmt.Errorf("empty vision response")
 	}
 
-	// Step 3: Synthesis Phase - combine all observations + tool results
-	synthesisPrompt := fmt.Sprintf(`You are synthesizing a complete response based on tool results and reasoning.
+	// 2. Extract and Validate LangChain tools
+	rawTools := toolRegistry.GetLangChainTools()
+	var lcTools []tools.Tool
+	for _, t := range rawTools {
+		if toolItem, ok := t.(tools.Tool); ok {
+			// CRITICAL: Log exact tool names so you can verify they match LLM action choices
+			log.Printf("🛠️ Registered Tool -> Name: %q | Description: %q", toolItem.Name(), toolItem.Description())
+			lcTools = append(lcTools, toolItem)
+		}
+	}
 
-TOOL EXECUTIONS:
-%s
+	if len(lcTools) == 0 {
+		return "", fmt.Errorf("no valid langchain tools found in registry")
+	}
 
-OBSERVATIONS:
-%s
+	log.Printf("🚀 Initializing LangChain Agent Executor with %d tools...", len(lcTools))
 
-Original User Query: %s
+	// Build a clear manifest of available tools for the prompt
+	var toolDescriptions strings.Builder
+	for _, t := range lcTools {
+		toolDescriptions.WriteString(fmt.Sprintf("- Name: %s\n  Description: %s\n", t.Name(), t.Description()))
+	}
 
-Provide a clear, concise, human-readable response that:
-1. Incorporates all tool results meaningfully
-2. Answers the user's original query completely
-3. Is formatted as a natural paragraph (not bullet points unless necessary)`,
-		formatToolExecutions(toolExecutions),
-		strings.Join(observations, "\n"),
-		input)
+	// Construct an explicit ReAct instruction set forcing the model to use the tools
+	promptPrefix := fmt.Sprintf(`You are an advanced AI assistant that MUST use tools to answer questions.You are an offline model and is few years old than the current date.Never assume your infromation is correct without using the internet search. Never guess or rely solely on internal knowledge when tools are available.
 
-	log.Printf("⚙️ Synthesizing final response...")
-	finalResult, err := w.textAgent.Generate(ctx, sessionID, synthesisPrompt)
+		You have access to the following tools:
+		%s
+
+		To use a tool, you MUST use the following exact format:
+		Thought: Do I need to use a tool? Yes.
+		Action: the name of the tool to take, should be one of [%s]
+		Action Input: the input to the tool
+		Observation: the result of the action
+		... (this Thought/Action/Action Input/Observation can repeat N times)
+		Thought: I now know the final answer
+		Final Answer: the final answer to the original input question
+
+		Begin!`, toolDescriptions.String(), getToolNamesList(lcTools))
+
+	// 3. Initialize the OneShotAgent with strict ReAct system prompt
+	agent := agents.NewOneShotAgent(
+		w.textAgent,
+		lcTools,
+		agents.WithPromptPrefix(promptPrefix),
+		agents.WithMaxIterations(5),
+		agents.WithCallbacksHandler(handler),
+	)
+
+	executor := agents.NewExecutor(agent)
+
+	// 4. Execute the chain and dump all result keys for debugging
+	result, err := chains.Call(ctx, executor, map[string]any{
+		"input": input,
+	})
+
+	// Debug output keys returned by the executor
+	if result != nil {
+		var keys []string
+		for k := range result {
+			keys = append(keys, k)
+		}
+		log.Printf("📦 Executor Result Keys: %v", keys)
+	}
+
 	if err != nil {
-		return "", fmt.Errorf("final synthesis failed: %w", err)
+		log.Printf("⚠️ LangChain execution failed (%v), attempting single-prompt fallback...", err)
+		fallbackResp, fallbackErr := llms.GenerateFromSinglePrompt(ctx, w.textAgent, input)
+		if fallbackErr != nil {
+			return "", fmt.Errorf("langchain execution and fallback both failed: %w (fallback error: %v)", err, fallbackErr)
+		}
+		return fallbackResp, nil
 	}
 
-	return extractString(finalResult), nil
+	// 5. Inspect tools used post-execution via intermediate steps
+	if steps, ok := result["intermediate_steps"].([]schema.AgentStep); ok {
+		log.Printf("🔍 Found %d intermediate tool execution steps", len(steps))
+		for _, step := range steps {
+			log.Printf("⚡ Tool Executed Successfully: [%s] with input [%s] -> Output: %s", step.Action.Tool, step.Action.ToolInput, step.Observation)
+		}
+	} else {
+		log.Printf("⚠️ No 'intermediate_steps' found or type assertion failed in result map.")
+	}
+
+	// 6. Safely parse and return the final text result
+	if outputStr, ok := result["text"].(string); ok {
+		return outputStr, nil
+	}
+
+	return fmt.Sprintf("%v", result), nil
 }
 
 // formatToolsForPrompt creates a formatted list of available tools for the LLM
@@ -211,54 +187,10 @@ func formatToolExecutions(executions []ToolExecutionStep) string {
 	return buf.String()
 }
 
-// ParseToolCallFromLLMOutput extracts tool calls from unstructured LLM responses
-// Handles cases where the LLM returns tool calls in natural language or special syntax
-func ParseToolCallFromLLMOutput(output string) (toolName string, input map[string]interface{}, found bool) {
-	// Pattern 1: <tool>tool_name</tool><input>{"key": "value"}</input>
-	toolPattern := regexp.MustCompile(`<tool>(\w+)</tool>`)
-	inputPattern := regexp.MustCompile(`<input>(.*?)</input>`)
-
-	toolMatch := toolPattern.FindStringSubmatch(output)
-	inputMatch := inputPattern.FindStringSubmatch(output)
-
-	if len(toolMatch) < 2 || len(inputMatch) < 2 {
-		return "", nil, false
+func getToolNamesList(toolsList []tools.Tool) string {
+	var names []string
+	for _, t := range toolsList {
+		names = append(names, t.Name())
 	}
-
-	toolName = toolMatch[1]
-	var parsedInput map[string]interface{}
-
-	if err := json.Unmarshal([]byte(inputMatch[1]), &parsedInput); err != nil {
-		log.Printf("WARN: Failed to parse tool input JSON: %v", err)
-		return "", nil, false
-	}
-
-	return toolName, parsedInput, true
-}
-
-// ChainToolCalls allows sequential tool execution based on previous results
-// Useful for workflows requiring multi-step tool coordination
-func (w *AgentWorkflow) ChainToolCalls(
-	ctx context.Context,
-	sessionID string,
-	toolRegistry *ToolRegistry,
-	toolChain []map[string]interface{},
-) ([]interface{}, error) {
-	var results []interface{}
-
-	for i, toolCall := range toolChain {
-		toolName := toolCall["tool_name"].(string)
-		toolArgs := toolCall["args"].(map[string]interface{})
-
-		log.Printf("🔗 Chain Step %d: Executing %s", i+1, toolName)
-
-		output, err := toolRegistry.Execute(ctx, toolName, ToolInput{Args: toolArgs})
-		if err != nil {
-			return nil, fmt.Errorf("chain step %d failed: %w", i+1, err)
-		}
-
-		results = append(results, output.Data)
-	}
-
-	return results, nil
+	return strings.Join(names, ", ")
 }

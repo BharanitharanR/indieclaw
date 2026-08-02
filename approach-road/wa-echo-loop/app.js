@@ -1,7 +1,7 @@
 const { Client, LocalAuth } = require('whatsapp-web.js');
 const qrcode = require('qrcode-terminal');
 const client = require('./grpcClent'); // Import the gRPC client created in the previous step
-
+const axios = require('axios'); // Still used for image downloading & location
 // Model definitions
 const TEXT_MODEL = 'qwen3:8b';
 const VISION_MODEL = 'gemma4:e2b';
@@ -30,14 +30,32 @@ waClient.on('message', (msg) => {
 });
 
 waClient.on('ready', () => console.log('✅ WhatsApp Bot ready!'));
+let LOCATION = "Unknown Location";
+
+async function fetchLocation() {
+    try {
+        const { data } = await axios.get("https://ipwho.is/");
+
+        LOCATION = [
+            data.city,
+            data.region,
+            data.country
+        ].filter(Boolean).join(", ");
+
+        console.log("📍 Current Location:", LOCATION);
+    } catch (err) {
+        console.error("Unable to determine location:", err.message);
+        LOCATION = "Unknown Location";
+    }
+}
 
 async function handleIncomingMessage(msg) {
     if (msg.isStatus || msg.from === 'status@broadcast' )  return;
-    if (msg.from.includes("@g.us") || !msg.body.startsWith("Jambu") || !msg.from.includes("919361315379@c.us")) return;
+    if (msg.from.includes("@g.us") || !msg.body.startsWith("Self") || !msg.from.includes("919361315379@c.us")) return;
 
     let targetModel = TEXT_MODEL;
     let base64Images = [];
-    let promptText = msg.body.replace(/^Jambu\s*/, '').trim();
+    let promptText = msg.body.replace(/^Self\s*/, '').trim();
 
     try {
         if (msg.hasMedia) {
@@ -52,14 +70,15 @@ async function handleIncomingMessage(msg) {
         if (!promptText && base64Images.length === 0) return;
 
         // Contextual Prompting
-        const location = "Unknown Location"; // Simplified for this example
-        promptText = `Current Location: ${location}. \nUser Prompt: ${promptText}`;
 
+        const location = LOCATION;
+        const finalPrompt = `Current Location: ${location}. \nInstruction: ${promptText}`;
+        console.log(finalPrompt)
         // Construct gRPC Request
         const request = {
             messages: [{
                 role: "user",
-                content: promptText,
+                content: finalPrompt,
                 images: base64Images
             }]
         };
@@ -85,4 +104,7 @@ async function handleIncomingMessage(msg) {
 }
 
 waClient.on("message_create", handleIncomingMessage);
-waClient.initialize();
+(async () => {
+    await fetchLocation();
+    waClient.initialize();
+})();

@@ -21,3 +21,5 @@ gateway-service/bin/orchestrator
 /Tool_calls
 gateway-service/go.sum
 gateway-service/go.mod
+/gateway-service/.playwright-mcp
+/limbs/search

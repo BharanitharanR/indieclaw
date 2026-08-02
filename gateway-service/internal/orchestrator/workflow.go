@@ -5,24 +5,22 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
-	"gateway-service/internal/pkg/vision"
 	"log"
 	"net/http"
 	"reflect"
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/tmc/langchaingo/llms"
+	"github.com/tmc/langchaingo/llms/ollama"
 
-	"github.com/Protocol-Lattice/go-agent"
-	"github.com/Protocol-Lattice/go-agent/src/memory"
-	"github.com/Protocol-Lattice/go-agent/src/models"
 	"github.com/ollama/ollama/api"
 	"github.com/qdrant/go-client/qdrant"
 )
 
 type AgentWorkflow struct {
-	textAgent   *agent.Agent
-	visionAgent *agent.Agent
+	textAgent   *ollama.LLM
+	visionAgent *ollama.LLM
 }
 
 // ReActStep represents a parsed step from our internal execution planner
@@ -36,48 +34,47 @@ type ReActPlan struct {
 	Steps []ReActStep `json:"steps"`
 }
 
-func NewAgentWorkflow(ctx context.Context, textModelName, visionModelName string) (*AgentWorkflow, error) {
-	memBank := memory.NewMemoryBankWithStore(memory.NewInMemoryStore())
-	mem := memory.NewSessionMemory(memBank, 8)
-
-	// 1. Text Model initialization
-	textModel, err := models.NewOllamaLLM(textModelName, "")
+func NewAgentWorkflowCustom(ctx context.Context, textModelName, visionModelName string) (*AgentWorkflow, error) {
+	// Fallback custom constructor if needed, mapping back to native Ollama LLM types for consistency
+	textLLM, err := ollama.New(ollama.WithModel(textModelName), ollama.WithServerURL("http://localhost:11434"))
 	if err != nil {
 		return nil, err
 	}
 
-	// 2. Vision Model initialization (Manual creation + Wrapper)
-	originalLLM, err := models.NewOllamaLLM(visionModelName, "")
-	if err != nil {
-		return nil, err
-	}
-	// Wrap it with your fixed logic
-	fixedLLM := &vision.VisionFixedLLM{OllamaLLM: originalLLM}
-
-	// 3. Text Agent
-	t, err := agent.New(agent.Options{
-		SystemPrompt: "You are an expert orchestrator assistant capable of analyzing problems and formulating step-by-step processing paths.",
-		Model:        textModel,
-		Memory:       mem,
-	})
+	visionLLM, err := ollama.New(ollama.WithModel(visionModelName), ollama.WithServerURL("http://localhost:11434"))
 	if err != nil {
 		return nil, err
 	}
 
-	// 4. Vision Agent (Using the fixedLLM wrapper)
-	v, err := agent.New(agent.Options{
-		SystemPrompt: "You are an expert vision assistant.",
-		Model:        fixedLLM,
-		Memory:       mem,
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	return &AgentWorkflow{textAgent: t, visionAgent: v}, nil
+	return &AgentWorkflow{textAgent: textLLM, visionAgent: visionLLM}, nil
 }
 
-// Run executes the core ReAct planning loop. If it encounters a clarification pause, it yields execution gracefully.
+func NewAgentWorkflow(ctx context.Context, textModelName, visionModelName string) (*AgentWorkflow, error) {
+	// Initialize native LangChain Ollama text client
+	textLLM, err := ollama.New(
+		ollama.WithModel(textModelName),
+		ollama.WithServerURL("http://localhost:11434"),
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	// Initialize native LangChain Ollama vision client
+	visionLLM, err := ollama.New(
+		ollama.WithModel(visionModelName),
+		ollama.WithServerURL("http://localhost:11434"),
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	return &AgentWorkflow{
+		textAgent:   textLLM,
+		visionAgent: visionLLM,
+	}, nil
+}
+
+// Run executes the core ReAct planning loop using native LangChain model calls.
 func (w *AgentWorkflow) Run(ctx context.Context, sessionID string, input string, isVision bool, imageBase64 string) (string, error) {
 	if isVision {
 		// 1. Decode the Base64 string into RAW BYTES
@@ -86,19 +83,28 @@ func (w *AgentWorkflow) Run(ctx context.Context, sessionID string, input string,
 			return "", fmt.Errorf("failed to decode image: %v", err)
 		}
 		mimeType := http.DetectContentType(imgBytes)
-		log.Printf("DEBUG: Detected MIME for file: %s", mimeType)
+		log.Printf("DEBUG: Detected MIME for file: %s (MIME: %s)", mimeType, mimeType)
 
-		// 2. Prepare the file structure with RAW BYTES
-		files := []models.File{
-			{
-				Name: "input.jpg",
-				MIME: "image/jpeg",
-				Data: imgBytes,
-			},
+		// 2. Construct LangChain multimodal content request
+		contentParts := []llms.ContentPart{
+			llms.TextPart(input),
+			llms.ImageURLPart("data:image/jpeg;base64," + imageBase64),
 		}
 
-		// 3. Invoke the library method directly for Vision tasks
-		return w.visionAgent.GenerateWithFiles(ctx, sessionID, input, files)
+		resp, err := w.visionAgent.GenerateContent(ctx, []llms.MessageContent{
+			{
+				Role:  llms.ChatMessageTypeHuman,
+				Parts: contentParts,
+			},
+		})
+		if err != nil {
+			return "", fmt.Errorf("vision model generation failed: %w", err)
+		}
+
+		if len(resp.Choices) > 0 {
+			return resp.Choices[0].Content, nil
+		}
+		return "", fmt.Errorf("empty vision response")
 	}
 
 	// --- TEXT AGENT: CORE REACT STATE GRAPH LOOP ---
@@ -120,56 +126,48 @@ JSON Structure:
 
 User Prompt: "%s"`, input)
 
-	rawPlanResp, err := w.textAgent.Generate(ctx, sessionID, planPrompt)
+	rawPlanResp, err := llms.GenerateFromSinglePrompt(ctx, w.textAgent, planPrompt)
 	if err != nil {
 		return "", fmt.Errorf("planning phase generation failed: %w", err)
 	}
 
-	// Safely clean and extract string if returned as raw response wrapper
 	planString := extractString(rawPlanResp)
 
 	var plan ReActPlan
 	if err := json.Unmarshal([]byte(planString), &plan); err != nil {
 		log.Printf("WARN: Failed parsing model plan JSON. Fallback to direct resolution. Error: %v Raw: %s", err, planString)
-		// Fallback graceful degradation: process directly if JSON boundaries break
-		directResp, err := w.textAgent.Generate(ctx, sessionID, input)
+		directResp, err := llms.GenerateFromSinglePrompt(ctx, w.textAgent, input)
 		return extractString(directResp), err
 	}
 
 	var observations []string
 
-	// Step 2: Iterate through steps sequentially (Stateless execution boundaries)
+	// Step 2: Iterate through steps sequentially
 	for _, step := range plan.Steps {
 		log.Printf("⚙️ ReAct Executor processing Step [%d]: %s (Needs Input: %t)", step.ID, step.Action, step.NeedsUserInput)
 
 		if step.NeedsUserInput {
-			// HUMAN-IN-THE-LOOP SUSPENSION: Halts loop execution immediately.
-			// The current state is preserved via implicit graph linkages.
 			return fmt.Sprintf("⏸️ Paused for clarification: %s", step.Action), nil
 		}
 		executionTask := fmt.Sprintf("Task: %s. Provide the result or answer for this task.", step.Action)
 
-		// We call the agent again to actually perform the work
-		actionResult, err := w.textAgent.Generate(ctx, sessionID, executionTask)
+		actionResult, err := llms.GenerateFromSinglePrompt(ctx, w.textAgent, executionTask)
 		if err != nil {
 			return "", fmt.Errorf("action execution failed: %w", err)
 		}
 
-		// Now 'observation' actually contains the real work done by the AI
 		observation := extractString(actionResult)
-
 		log.Printf("✅ Result obtained: %s", observation)
 		observations = append(observations, observation)
-
 	}
 
-	// Step 3: Synthesis Phase (Combine tracking context and observations into the final user deliverable)
-	synthesisPrompt := fmt.Sprintf(`Combine your historical insights and step-by-step tool observations to build a final human-readable answer.The reposnse should be strictly humand readable paragraph and concise.
+	// Step 3: Synthesis Phase
+	synthesisPrompt := fmt.Sprintf(`Combine your historical insights and step-by-step tool observations to build a final human-readable answer. The response should be strictly human readable paragraph and concise.
 Observations: %v
 Original User Query: %s`, observations, input)
 
 	log.Printf("⚙️ Synthesizing observation: %s", observations)
-	finalResult, err := w.textAgent.Generate(ctx, sessionID, synthesisPrompt)
+	finalResult, err := llms.GenerateFromSinglePrompt(ctx, w.textAgent, synthesisPrompt)
 	if err != nil {
 		return "", fmt.Errorf("final logic synthesis failed: %w", err)
 	}
@@ -203,13 +201,12 @@ func SaveInteractionToVectorDB(ctx context.Context, embeddingModel string, qdran
 
 	pointID := uuid.New().String()
 
-	// Building metadata payload map including our structural implicit graph "Edge"
 	payloadMap := map[string]interface{}{
 		"session_id":            sessionID,
 		"prompt":                prompt,
 		"response":              response,
 		"created_at":            time.Now().Unix(),
-		"parent_interaction_id": parentVectorID, // <-- Graph edge binding link
+		"parent_interaction_id": parentVectorID,
 	}
 
 	points := []*qdrant.PointStruct{
