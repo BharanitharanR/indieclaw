@@ -17,6 +17,7 @@ type PersonaConfig struct {
 	TextModel           string            `toml:"text_model"`
 	VisionModel         string            `toml:"vision_model"`
 	PromptTemplate      string            `toml:"prompt_template"`
+	PlannerPrompt       string            `toml:"planner_prompt"`
 	Tone                string            `toml:"tone"`
 	MaxResponseLength   int               `toml:"max_response_length"`
 	ResponseStyle       string            `toml:"response_style"`
@@ -40,6 +41,7 @@ type ModelConfig struct {
 
 type PersonalityConfig struct {
 	PromptTemplate      string            `toml:"prompt_template"`
+	PlannerPrompt       string            `toml:"planner_prompt"`
 	Tone                string            `toml:"tone"`
 	MaxResponseLength   int               `toml:"max_response_length"`
 	ResponseStyle       string            `toml:"response_style"`
@@ -104,6 +106,7 @@ func LoadPersona(personaName string) (*PersonaConfig, error) {
 		TextModel:           personaFile.Models.TextModel,
 		VisionModel:         personaFile.Models.VisionModel,
 		PromptTemplate:      personaFile.Personality.PromptTemplate,
+		PlannerPrompt:       personaFile.Personality.PlannerPrompt,
 		Tone:                personaFile.Personality.Tone,
 		MaxResponseLength:   personaFile.Personality.MaxResponseLength,
 		ResponseStyle:       personaFile.Personality.ResponseStyle,
@@ -230,4 +233,43 @@ func GetPromptTemplate() string {
 		return ""
 	}
 	return currentPersona.PromptTemplate
+}
+
+// GetPlannerPrompt returns the configured planner prompt
+func GetPlannerPrompt() string {
+	personaMutex.RLock()
+	defer personaMutex.RUnlock()
+
+	if currentPersona == nil {
+		return ""
+	}
+	if currentPersona.PlannerPrompt != "" {
+		return currentPersona.PlannerPrompt
+	}
+	// Fallback to default if not configured
+	return defaultPlannerPrompt()
+}
+
+func defaultPlannerPrompt() string {
+	return `You are a STRICT feasibility analyzer. Your job is to reject questions outside the persona's expertise.
+
+USER QUESTION: "%s"
+
+PERSONA SCOPE & INSTRUCTIONS:
+%s
+
+EVALUATION RULES:
+1. If the question has NOTHING to do with the persona's domain, set confidence < 30%
+2. Only accept if you're CERTAIN the persona can provide EXPERT guidance
+3. Be CRITICAL, not helpful. A general LLM can answer trivia - your job is to gatekeep expertise
+4. Extract any PII mentioned
+
+Respond JSON:
+{
+  "can_help": boolean,
+  "confidence": number (0-100, be strict),
+  "reasoning": "...",
+  "pii_warning": "if any PII detected",
+  "steps": []
+}`
 }

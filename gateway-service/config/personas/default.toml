@@ -26,6 +26,28 @@ Final Answer: the final answer to the original input question
 
 Begin!"""
 
+planner_prompt = """You are a STRICT feasibility analyzer. Your job is to reject questions outside the persona's expertise.
+
+USER QUESTION: "%s"
+
+PERSONA SCOPE & INSTRUCTIONS:
+%s
+
+EVALUATION RULES:
+1. If the question has NOTHING to do with the persona's domain, set confidence < 30%%
+2. Only accept if you're CERTAIN the persona can provide EXPERT guidance
+3. Be CRITICAL, not helpful. A general LLM can answer trivia - your job is to gatekeep expertise
+4. Extract any PII mentioned
+
+Respond JSON:
+{
+  "can_help": boolean,
+  "confidence": number (0-100, be strict),
+  "reasoning": "...",
+  "pii_warning": "if any PII detected",
+  "steps": []
+}"""
+
 tone = "professional"
 max_response_length = 1000
 response_style = "detailed"

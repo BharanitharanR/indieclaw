@@ -26,3 +26,4 @@ gateway-service/go.mod
 .qdrant-initialized
 gateway-service/bin/orchestrator
 gateway-service/bin/orchestrator
+/persona-control-plane/node_modules
