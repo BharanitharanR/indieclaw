@@ -8,6 +8,7 @@ require (
 	github.com/mark3labs/mcp-go v0.57.0
 	github.com/modelcontextprotocol/go-sdk v1.6.1
 	github.com/ollama/ollama v0.12.5
+	github.com/pelletier/go-toml/v2 v2.2.2
 	github.com/qdrant/go-client v1.18.3
 	github.com/tmc/langchaingo v0.1.14
 	google.golang.org/grpc v1.82.0
@@ -48,7 +49,6 @@ require (
 	github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd // indirect
 	github.com/modern-go/reflect2 v1.0.2 // indirect
 	github.com/nikolalohinski/gonja v1.5.3 // indirect
-	github.com/pelletier/go-toml/v2 v2.2.2 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/pkoukk/tiktoken-go v0.1.6 // indirect
 	github.com/santhosh-tekuri/jsonschema/v6 v6.0.2 // indirect

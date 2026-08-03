@@ -40,13 +40,26 @@ type SessionNode struct {
 
 func main() {
 	initLogger()
+
+	// Load persona configuration first
+	personaName := os.Getenv("PERSONA_NAME")
+	if personaName == "" {
+		personaName = "default"
+	}
+
+	persona, err := orchestrator.LoadPersona(personaName)
+	if err != nil {
+		log.Fatalf("Failed to load persona %q: %v", personaName, err)
+	}
+
+	// Use persona's model settings if provided, otherwise use environment variables
 	textModel := os.Getenv("TEXT_MODEL")
 	if textModel == "" {
-		textModel = "qwen3:8b"
+		textModel = persona.TextModel
 	}
 	visionModel := os.Getenv("VISION_MODEL")
 	if visionModel == "" {
-		visionModel = "gemma4:e2b"
+		visionModel = persona.VisionModel
 	}
 
 	embeddingModel := os.Getenv("EMBEDDING_MODEL")
@@ -102,7 +115,7 @@ func main() {
 		log.Fatalf("Failed to listen on :9000: %v", err)
 	}
 
-	log.Printf("🚀 Orchestrator running on :9000 [Text: %s, Vision: %s, Tools: ENABLED]", textModel, visionModel)
+	log.Printf("🚀 Orchestrator running on :9000 [Persona: %s, Text: %s, Vision: %s, Tools: ENABLED]", persona.Name, textModel, visionModel)
 	if err := s.Serve(lis); err != nil {
 		log.Fatalf("Failed to serve: %v", err)
 	}

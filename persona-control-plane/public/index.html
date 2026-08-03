@@ -1,0 +1,664 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Persona Control Plane</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #f5f1e8 0%, #ede8df 100%);
+            color: #5a5450;
+            min-height: 100vh;
+        }
+
+        .container {
+            display: flex;
+            height: 100vh;
+            gap: 0;
+        }
+
+        /* Sidebar */
+        .sidebar {
+            width: 280px;
+            background: #faf7f2;
+            border-right: 1px solid #e8dfd6;
+            display: flex;
+            flex-direction: column;
+            padding: 24px 16px;
+            overflow-y: auto;
+        }
+
+        .sidebar-header {
+            font-size: 18px;
+            font-weight: 600;
+            color: #6b6359;
+            margin-bottom: 24px;
+            padding-bottom: 12px;
+            border-bottom: 1px solid #e8dfd6;
+        }
+
+        .personas-list {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            margin-bottom: 24px;
+        }
+
+        .persona-item {
+            padding: 10px 12px;
+            background: white;
+            border: 1px solid #e8dfd6;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-size: 14px;
+            color: #6b6359;
+        }
+
+        .persona-item:hover {
+            background: #f0ebe2;
+            border-color: #d9cdbf;
+        }
+
+        .persona-item.active {
+            background: #e8dfd6;
+            border-color: #d9cdbf;
+            font-weight: 500;
+        }
+
+        .sidebar-actions {
+            display: flex;
+            gap: 8px;
+            margin-top: auto;
+        }
+
+        .btn-small {
+            flex: 1;
+            padding: 8px 12px;
+            background: white;
+            border: 1px solid #e8dfd6;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 12px;
+            color: #6b6359;
+            transition: all 0.2s ease;
+        }
+
+        .btn-small:hover {
+            background: #f0ebe2;
+            border-color: #d9cdbf;
+        }
+
+        .btn-small.primary {
+            background: #d9cdbf;
+            border-color: #c9bfb0;
+            font-weight: 500;
+        }
+
+        .btn-small.primary:hover {
+            background: #c9bfb0;
+        }
+
+        .btn-small.danger {
+            background: #f5e8e8;
+            border-color: #e8d9d9;
+            color: #8b5a5a;
+        }
+
+        .btn-small.danger:hover {
+            background: #e8d9d9;
+        }
+
+        /* Main Content */
+        .main-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            background: white;
+        }
+
+        .header {
+            padding: 20px 24px;
+            border-bottom: 1px solid #e8ddf6;
+            background: white;
+        }
+
+        .header h1 {
+            font-size: 24px;
+            color: #6b6359;
+            margin-bottom: 4px;
+        }
+
+        .header p {
+            font-size: 13px;
+            color: #9b9389;
+        }
+
+        .content-area {
+            flex: 1;
+            overflow-y: auto;
+            padding: 24px;
+        }
+
+        .section {
+            margin-bottom: 24px;
+        }
+
+        .section-title {
+            font-size: 14px;
+            font-weight: 600;
+            color: #6b6359;
+            margin-bottom: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .form-group {
+            margin-bottom: 16px;
+        }
+
+        .form-group label {
+            display: block;
+            font-size: 13px;
+            color: #6b6359;
+            margin-bottom: 6px;
+            font-weight: 500;
+        }
+
+        .form-group input,
+        .form-group textarea,
+        .form-group select {
+            width: 100%;
+            padding: 10px 12px;
+            border: 1px solid #e8dfd6;
+            border-radius: 6px;
+            font-family: inherit;
+            font-size: 13px;
+            color: #5a5450;
+            background: #faf7f2;
+            transition: all 0.2s ease;
+        }
+
+        .form-group textarea {
+            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+            font-size: 12px;
+            min-height: 400px;
+            resize: vertical;
+        }
+
+        .form-group input:focus,
+        .form-group textarea:focus,
+        .form-group select:focus {
+            outline: none;
+            background: white;
+            border-color: #d9cdbf;
+            box-shadow: 0 0 0 3px rgba(217, 205, 191, 0.1);
+        }
+
+        .phone-list {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .phone-item {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+
+        .phone-item input {
+            flex: 1;
+        }
+
+        .btn-remove {
+            padding: 8px 12px;
+            background: #f5e8e8;
+            border: 1px solid #e8d9d9;
+            border-radius: 4px;
+            cursor: pointer;
+            color: #8b5a5a;
+            font-size: 12px;
+            transition: all 0.2s ease;
+        }
+
+        .btn-remove:hover {
+            background: #e8d9d9;
+        }
+
+        .btn-add-phone {
+            padding: 8px 12px;
+            background: #f0ebe2;
+            border: 1px solid #e8dfd6;
+            border-radius: 4px;
+            cursor: pointer;
+            color: #6b6359;
+            font-size: 12px;
+            font-weight: 500;
+        }
+
+        .btn-add-phone:hover {
+            background: #e8dfd6;
+        }
+
+        /* Buttons */
+        .btn-group {
+            display: flex;
+            gap: 8px;
+            margin-top: 20px;
+        }
+
+        .btn {
+            padding: 10px 16px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.2s ease;
+        }
+
+        .btn-primary {
+            background: #d9cdbf;
+            color: #5a5450;
+            border: 1px solid #c9bfb0;
+        }
+
+        .btn-primary:hover {
+            background: #c9bfb0;
+        }
+
+        .btn-secondary {
+            background: #f0ebe2;
+            color: #6b6359;
+            border: 1px solid #e8dfd6;
+        }
+
+        .btn-secondary:hover {
+            background: #e8dfd6;
+        }
+
+        .btn-danger {
+            background: #f5e8e8;
+            color: #8b5a5a;
+            border: 1px solid #e8d9d9;
+        }
+
+        .btn-danger:hover {
+            background: #e8d9d9;
+        }
+
+        /* Alerts */
+        .alert {
+            padding: 12px 16px;
+            border-radius: 6px;
+            font-size: 13px;
+            margin-bottom: 16px;
+            display: none;
+        }
+
+        .alert.show {
+            display: block;
+        }
+
+        .alert-success {
+            background: #e8f5e9;
+            color: #2e7d32;
+            border: 1px solid #c8e6c9;
+        }
+
+        .alert-error {
+            background: #ffebee;
+            color: #c62828;
+            border: 1px solid #ef9a9a;
+        }
+
+        .alert-info {
+            background: #e3f2fd;
+            color: #1565c0;
+            border: 1px solid #bbdefb;
+        }
+
+        /* Loading state */
+        .loading {
+            opacity: 0.6;
+            pointer-events: none;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 40px;
+            color: #9b9389;
+        }
+
+        .empty-state h2 {
+            font-size: 16px;
+            color: #6b6359;
+            margin-bottom: 8px;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .container {
+                flex-direction: column;
+            }
+            .sidebar {
+                width: 100%;
+                border-right: none;
+                border-bottom: 1px solid #e8dfd6;
+            }
+            .personas-list {
+                flex-direction: row;
+                margin-bottom: 12px;
+            }
+            .content-area {
+                padding: 16px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Sidebar -->
+        <div class="sidebar">
+            <div class="sidebar-header">📝 Personas</div>
+            <div class="personas-list" id="personasList"></div>
+            <div class="sidebar-actions">
+                <button class="btn-small primary" onclick="showNewPersonaModal()">+ New</button>
+                <button class="btn-small danger" onclick="deleteCurrentPersona()">Delete</button>
+            </div>
+        </div>
+
+        <!-- Main Content -->
+        <div class="main-content">
+            <div class="header">
+                <h1 id="personaName">Select a Persona</h1>
+                <p id="personaInfo"></p>
+            </div>
+            <div class="content-area" id="contentArea">
+                <div class="empty-state">
+                    <h2>No Persona Selected</h2>
+                    <p>Select a persona from the sidebar or create a new one to get started.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal for creating new persona -->
+    <div id="newPersonaModal" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.3); z-index: 1000; display: flex; align-items: center; justify-content: center;">
+        <div style="background: white; padding: 24px; border-radius: 8px; width: 90%; max-width: 400px; box-shadow: 0 4px 12px rgba(0,0,0,0.15);">
+            <h2 style="color: #6b6359; margin-bottom: 16px;">Create New Persona</h2>
+            <div class="form-group">
+                <label>Persona Name</label>
+                <input type="text" id="newPersonaName" placeholder="e.g., my_coach" />
+            </div>
+            <div style="display: flex; gap: 8px; margin-top: 24px;">
+                <button class="btn btn-primary" onclick="createNewPersona()">Create</button>
+                <button class="btn btn-secondary" onclick="closeNewPersonaModal()">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentPersona = null;
+        let personas = [];
+
+        async function loadPersonas() {
+            try {
+                const response = await fetch('/api/personas');
+                const data = await response.json();
+                if (data.success) {
+                    personas = data.personas;
+                    renderPersonasList();
+                }
+            } catch (error) {
+                showAlert(`Error loading personas: ${error.message}`, 'error');
+            }
+        }
+
+        function renderPersonasList() {
+            const list = document.getElementById('personasList');
+            list.innerHTML = personas
+                .map(name => `<div class="persona-item ${name === currentPersona ? 'active' : ''}" onclick="selectPersona('${name}')">${name}</div>`)
+                .join('');
+        }
+
+        async function selectPersona(name) {
+            try {
+                const response = await fetch(`/api/personas/${name}`);
+                const data = await response.json();
+                if (data.success) {
+                    currentPersona = name;
+                    renderPersonasList();
+                    showPersonaEditor(name, data.content);
+                }
+            } catch (error) {
+                showAlert(`Error loading persona: ${error.message}`, 'error');
+            }
+        }
+
+        function showPersonaEditor(name, content) {
+            const header = document.getElementById('personaName');
+            const info = document.getElementById('personaInfo');
+            const contentArea = document.getElementById('contentArea');
+
+            header.textContent = name;
+            info.textContent = `Editing persona configuration`;
+
+            contentArea.innerHTML = `
+                <div class="section">
+                    <div class="section-title">Configuration</div>
+                    <div class="alert" id="validationAlert"></div>
+                    <div class="form-group">
+                        <label>TOML Content</label>
+                        <textarea id="tomlContent" placeholder="Enter TOML configuration...">${escapeHtml(content)}</textarea>
+                    </div>
+                    <div class="btn-group">
+                        <button class="btn btn-primary" onclick="savePersona()">💾 Save</button>
+                        <button class="btn btn-secondary" onclick="validateToml()">✓ Validate</button>
+                    </div>
+                </div>
+                <div class="section" style="margin-top: 24px;">
+                    <div class="section-title">Quick Info</div>
+                    <div style="background: #faf7f2; padding: 12px; border-radius: 6px; font-size: 13px; color: #6b6359; line-height: 1.6;">
+                        <p>• Edit the TOML configuration directly</p>
+                        <p>• Click "Validate" to check syntax</p>
+                        <p>• Click "Save" to apply changes</p>
+                        <p>• Changes take effect after restart</p>
+                    </div>
+                </div>
+            `;
+        }
+
+        async function savePersona() {
+            const content = document.getElementById('tomlContent').value;
+            if (!content.trim()) {
+                showAlert('Content cannot be empty', 'error');
+                return;
+            }
+
+            try {
+                const response = await fetch(`/api/personas/${currentPersona}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ content }),
+                });
+                const data = await response.json();
+                if (data.success) {
+                    showAlert(`✓ Persona "${currentPersona}" saved successfully`, 'success');
+                } else {
+                    showAlert(`Error: ${data.error}`, 'error');
+                }
+            } catch (error) {
+                showAlert(`Error saving persona: ${error.message}`, 'error');
+            }
+        }
+
+        async function validateToml() {
+            const content = document.getElementById('tomlContent').value;
+            if (!content.trim()) {
+                showAlert('Content cannot be empty', 'error');
+                return;
+            }
+
+            try {
+                const response = await fetch(`/api/personas/${currentPersona}/validate`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ content }),
+                });
+                const data = await response.json();
+                if (data.success) {
+                    showAlert('✓ Valid TOML syntax', 'success', 'validationAlert');
+                } else {
+                    showAlert(`Invalid TOML: ${data.error}`, 'error', 'validationAlert');
+                }
+            } catch (error) {
+                showAlert(`Validation error: ${error.message}`, 'error', 'validationAlert');
+            }
+        }
+
+        function showNewPersonaModal() {
+            document.getElementById('newPersonaModal').style.display = 'flex';
+            document.getElementById('newPersonaName').focus();
+        }
+
+        function closeNewPersonaModal() {
+            document.getElementById('newPersonaModal').style.display = 'none';
+        }
+
+        async function createNewPersona() {
+            const name = document.getElementById('newPersonaName').value.trim();
+            if (!name) {
+                showAlert('Persona name is required', 'error');
+                return;
+            }
+
+            if (personas.includes(name)) {
+                showAlert('Persona already exists', 'error');
+                return;
+            }
+
+            const defaultContent = `[persona]
+name = "${name}"
+version = "1.0"
+
+[models]
+text_model = "qwen3:8b"
+vision_model = "gemma4:e2b"
+
+[personality]
+prompt_template = """Your prompt here..."""
+tone = "professional"
+response_style = "detailed"
+
+[whatsapp]
+allowed_phone_numbers = []
+enabled = true
+`;
+
+            try {
+                const response = await fetch(`/api/personas/${name}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ content: defaultContent }),
+                });
+                const data = await response.json();
+                if (data.success) {
+                    closeNewPersonaModal();
+                    await loadPersonas();
+                    await selectPersona(name);
+                    showAlert(`✓ Persona "${name}" created`, 'success');
+                } else {
+                    showAlert(`Error: ${data.error}`, 'error');
+                }
+            } catch (error) {
+                showAlert(`Error creating persona: ${error.message}`, 'error');
+            }
+        }
+
+        async function deleteCurrentPersona() {
+            if (!currentPersona) {
+                showAlert('No persona selected', 'error');
+                return;
+            }
+
+            if (currentPersona === 'default') {
+                showAlert('Cannot delete the default persona', 'error');
+                return;
+            }
+
+            if (!confirm(`Delete persona "${currentPersona}"? This action cannot be undone.`)) {
+                return;
+            }
+
+            try {
+                const response = await fetch(`/api/personas/${currentPersona}`, {
+                    method: 'DELETE',
+                });
+                const data = await response.json();
+                if (data.success) {
+                    currentPersona = null;
+                    await loadPersonas();
+                    document.getElementById('contentArea').innerHTML = `
+                        <div class="empty-state">
+                            <h2>Persona Deleted</h2>
+                            <p>Select another persona from the sidebar.</p>
+                        </div>
+                    `;
+                    showAlert(`✓ Persona deleted`, 'success');
+                } else {
+                    showAlert(`Error: ${data.error}`, 'error');
+                }
+            } catch (error) {
+                showAlert(`Error deleting persona: ${error.message}`, 'error');
+            }
+        }
+
+        function showAlert(message, type, elementId = null) {
+            const alertEl = elementId ?
+                document.getElementById(elementId) :
+                document.querySelector('.alert.show') || createAlert();
+
+            alertEl.className = `alert alert-${type} show`;
+            alertEl.textContent = message;
+
+            if (!elementId) {
+                document.querySelector('.content-area').prepend(alertEl);
+            }
+
+            setTimeout(() => {
+                alertEl.classList.remove('show');
+            }, 5000);
+        }
+
+        function createAlert() {
+            const alert = document.createElement('div');
+            alert.className = 'alert';
+            return alert;
+        }
+
+        function escapeHtml(text) {
+            const map = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' };
+            return text.replace(/[&<>"']/g, m => map[m]);
+        }
+
+        // Close modal on outside click
+        document.getElementById('newPersonaModal').addEventListener('click', (e) => {
+            if (e.target.id === 'newPersonaModal') {
+                closeNewPersonaModal();
+            }
+        });
+
+        // Initialize
+        loadPersonas();
+    </script>
+</body>
+</html>

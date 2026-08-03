@@ -88,22 +88,16 @@ func (w *AgentWorkflow) RunWithTools(ctx context.Context, sessionID string, inpu
 		toolDescriptions.WriteString(fmt.Sprintf("- Name: %s\n  Description: %s\n", t.Name(), t.Description()))
 	}
 
-	// Construct an explicit ReAct instruction set forcing the model to use the tools
-	promptPrefix := fmt.Sprintf(`You are an advanced AI assistant that MUST use tools to answer questions.You are an offline model and is few years old than the current date.Never assume your infromation is correct without using the internet search. Never guess or rely solely on internal knowledge when tools are available.
+	// Load persona and construct prompt from persona template
+	persona := GetPersona()
+	if persona == nil {
+		return "", fmt.Errorf("no persona loaded - call LoadPersona() during initialization")
+	}
 
-		You have access to the following tools:
-		%s
+	log.Printf("📝 Using persona: %s | Tone: %s | Response Style: %s", persona.Name, persona.Tone, persona.ResponseStyle)
 
-		To use a tool, you MUST use the following exact format:
-		Thought: Do I need to use a tool? Yes.
-		Action: the name of the tool to take, should be one of [%s]
-		Action Input: the input to the tool
-		Observation: the result of the action
-		... (this Thought/Action/Action Input/Observation can repeat N times)
-		Thought: I now know the final answer
-		Final Answer: the final answer to the original input question
-
-		Begin!`, toolDescriptions.String(), getToolNamesList(lcTools))
+	// Use persona's prompt template, substituting tool information
+	promptPrefix := fmt.Sprintf(persona.PromptTemplate, toolDescriptions.String(), getToolNamesList(lcTools))
 
 	// 3. Initialize the OneShotAgent with strict ReAct system prompt
 	agent := agents.NewOneShotAgent(

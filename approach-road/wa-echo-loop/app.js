@@ -2,9 +2,12 @@ const { Client, LocalAuth } = require('whatsapp-web.js');
 const qrcode = require('qrcode-terminal');
 const client = require('./grpcClent'); // Import the gRPC client created in the previous step
 const axios = require('axios'); // Still used for image downloading & location
-// Model definitions
-const TEXT_MODEL = 'qwen3:8b';
-const VISION_MODEL = 'gemma4:e2b';
+const PersonaConfig = require('./personaConfig');
+
+// Load persona configuration
+const personaName = process.env.PERSONA_NAME || 'default';
+const persona = PersonaConfig.loadByName(personaName);
+console.log(`📝 ${persona.toString()}`);
 
 const waClient = new Client({
     authStrategy: new LocalAuth({ dataPath: './.wwebjs_auth' }),
@@ -50,19 +53,38 @@ async function fetchLocation() {
 }
 
 async function handleIncomingMessage(msg) {
-    if (msg.isStatus || msg.from === 'status@broadcast' )  return;
-    if (msg.from.includes("@g.us") || !msg.body.startsWith("Self") || !msg.from.includes("919361315379@c.us")) return;
+    if (msg.isStatus || msg.from === 'status@broadcast') return;
 
-    let targetModel = TEXT_MODEL;
+    // Reject group messages
+    if (msg.from.includes("@g.us")) return;
+
+    // Extract phone number from sender JID (format: "919361315379@c.us" -> "919361315379")
+    const senderPhone = msg.from.split('@')[0];
+
+    // Validate phone number against persona's allowed list
+    if (persona.allowedPhoneNumbers.length > 0) {
+        if (!persona.isPhoneAllowed(senderPhone)) {
+            console.log(`⛔ Rejected message from unauthorized number: ${senderPhone}`);
+            return;
+        }
+    } else {
+        console.log(`⚠️  No phone number validation configured. Accepting from: ${senderPhone}`);
+    }
+
+    // Check for trigger prefix (default: "Self" if none configured)
+    const triggerPrefix = process.env.TRIGGER_PREFIX || 'Self';
+    if (!msg.body.startsWith(triggerPrefix)) return;
+
+    let targetModel = persona.getModelForType(msg.hasMedia);
     let base64Images = [];
-    let promptText = msg.body.replace(/^Self\s*/, '').trim();
+    let promptText = msg.body.replace(new RegExp(`^${triggerPrefix}\\s*`), '').trim();
 
     try {
         if (msg.hasMedia) {
             const media = await msg.downloadMedia();
             if (media && media.mimetype.startsWith('image/')) {
                 base64Images.push(media.data);
-                targetModel = VISION_MODEL;
+                targetModel = persona.visionModel;
                 if (!promptText) promptText = "Describe what you see in this image in detail.";
             }
         }
