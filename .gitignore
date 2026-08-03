@@ -23,3 +23,6 @@ gateway-service/go.sum
 gateway-service/go.mod
 /gateway-service/.playwright-mcp
 /limbs/search
+.qdrant-initialized
+gateway-service/bin/orchestrator
+gateway-service/bin/orchestrator

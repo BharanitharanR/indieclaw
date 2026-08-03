@@ -268,6 +268,7 @@ func (s *server) Chat(ctx context.Context, req *v1.ChatRequest) (*v1.ChatRespons
 			log.Printf("✅ Success: Complete exchange for session %s indexed. Graph link updated.", sessID)
 		}(userID, sessionID, parentVectorID, userMsg, result)
 	}
+	log.Printf("result %s", result)
 
 	return &v1.ChatResponse{
 		Message: &v1.Message{

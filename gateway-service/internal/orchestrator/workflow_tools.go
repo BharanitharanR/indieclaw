@@ -2,6 +2,7 @@ package orchestrator
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"log"
 	"strings"
@@ -149,11 +150,15 @@ func (w *AgentWorkflow) RunWithTools(ctx context.Context, sessionID string, inpu
 	}
 
 	// 6. Safely parse and return the final text result
+	if outputStr, ok := result["output"].(string); ok {
+		return outputStr, nil
+	}
 	if outputStr, ok := result["text"].(string); ok {
 		return outputStr, nil
 	}
-
-	return fmt.Sprintf("%v", result), nil
+	resultJSON, _ := json.Marshal(result)
+	log.Printf("⚠️ Unexpected result format, returning raw JSON: %s", string(resultJSON))
+	return string(resultJSON), nil
 }
 
 // formatToolsForPrompt creates a formatted list of available tools for the LLM
