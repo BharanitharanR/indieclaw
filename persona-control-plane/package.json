@@ -7,12 +7,17 @@
     "start": "node server.js",
     "dev": "node server.js"
   },
-  "keywords": ["persona", "configuration", "ui"],
+  "keywords": [
+    "persona",
+    "configuration",
+    "ui"
+  ],
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "@iarna/toml": "^2.2.5",
+    "body-parser": "^1.20.2",
     "express": "^4.18.2",
-    "toml": "^3.0.0",
-    "body-parser": "^1.20.2"
+    "toml": "^3.0.0"
   }
 }

@@ -39,13 +39,20 @@ EVALUATION RULES:
 3. Be CRITICAL, not helpful. A general LLM can answer trivia - your job is to gatekeep expertise
 4. Extract any PII mentioned
 
+IF CAN HELP (confidence >= 50%):
+Break down the user's request into 3-5 concrete steps:
+- Step 1: [First action/analysis needed]
+- Step 2: [Second action/analysis needed]
+- Step 3: [Third action/analysis needed]
+- etc.
+
 Respond JSON:
 {
   "can_help": boolean,
   "confidence": number (0-100, be strict),
   "reasoning": "...",
   "pii_warning": "if any PII detected",
-  "steps": []
+  "steps": ["step description 1", "step description 2", "step description 3"]
 }"""
 
 tone = "professional"

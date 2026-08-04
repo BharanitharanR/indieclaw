@@ -29,6 +29,17 @@ const client = new gatewayProto.gateway.v1.GatewayService(
 // Export the client directly with a helper for readability
 module.exports = {
     chat: (request, callback) => {
-        client.Chat(request, callback);
+        // Set a 10-minute deadline to match the orchestrator timeout
+        // gRPC deadline format: milliseconds since epoch
+        // 10 minutes = 600,000 milliseconds
+        const deadline = Date.now() + (10 * 60 * 1000); // 10 minutes in milliseconds
+
+        // Create call options with deadline
+        const options = {
+            deadline: deadline
+        };
+
+        // Make the call with deadline option
+        client.Chat(request, options, callback);
     }
 };

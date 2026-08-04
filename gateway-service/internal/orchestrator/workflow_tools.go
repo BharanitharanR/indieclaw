@@ -53,7 +53,7 @@ func (w *AgentWorkflow) RunWithTools(ctx context.Context, sessionID string, inpu
 			llms.ImageURLPart("data:image/jpeg;base64," + imageBase64),
 		}
 
-		resp, err := w.visionAgent.GenerateContent(ctx, []llms.MessageContent{
+		resp, err := w.VisionAgent.GenerateContent(ctx, []llms.MessageContent{
 			{Role: llms.ChatMessageTypeHuman, Parts: contentParts},
 		})
 		if err != nil {
@@ -101,7 +101,7 @@ func (w *AgentWorkflow) RunWithTools(ctx context.Context, sessionID string, inpu
 
 	// 3. Initialize the OneShotAgent with strict ReAct system prompt
 	agent := agents.NewOneShotAgent(
-		w.textAgent,
+		w.TextAgent,
 		lcTools,
 		agents.WithPromptPrefix(promptPrefix),
 		agents.WithMaxIterations(5),
@@ -126,7 +126,7 @@ func (w *AgentWorkflow) RunWithTools(ctx context.Context, sessionID string, inpu
 
 	if err != nil {
 		log.Printf("⚠️ LangChain execution failed (%v), attempting single-prompt fallback...", err)
-		fallbackResp, fallbackErr := llms.GenerateFromSinglePrompt(ctx, w.textAgent, input)
+		fallbackResp, fallbackErr := llms.GenerateFromSinglePrompt(ctx, w.TextAgent, input)
 		if fallbackErr != nil {
 			return "", fmt.Errorf("langchain execution and fallback both failed: %w (fallback error: %v)", err, fallbackErr)
 		}

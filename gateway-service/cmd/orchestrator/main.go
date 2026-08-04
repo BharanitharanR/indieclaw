@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"log"
 	"net"
@@ -11,6 +12,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/qdrant/go-client/qdrant"
+	amqp "github.com/rabbitmq/amqp091-go"
 
 	initdb "gateway-service/cmd/init_db"
 	"gateway-service/internal/orchestrator"
@@ -23,6 +25,9 @@ import (
 type server struct {
 	v1.UnimplementedGatewayServiceServer
 	workflow       *orchestrator.AgentWorkflow
+	pipeline       *orchestrator.Pipeline
+	persona        *orchestrator.PersonaDefinition
+	personaExecutor orchestrator.PersonaExecutor
 	qdrantClient   *qdrant.Client
 	textModel      string
 	visionModel    string
@@ -30,6 +35,10 @@ type server struct {
 	graphMu        sync.RWMutex
 	activeSessions map[string]*SessionNode
 	toolRegistry   *orchestrator.ToolRegistry
+	rabbitmqConn   *amqp.Connection
+	rabbitmqCh     *amqp.Channel
+	reqQueue       amqp.Queue
+	respQueue      amqp.Queue
 }
 
 type SessionNode struct {
@@ -41,25 +50,38 @@ type SessionNode struct {
 func main() {
 	initLogger()
 
-	// Load persona configuration first
+	// ============= LOAD PERSONA =============
 	personaName := os.Getenv("PERSONA_NAME")
 	if personaName == "" {
-		personaName = "default"
+		personaName = "generic_assistant"
 	}
 
-	persona, err := orchestrator.LoadPersona(personaName)
+	personaDef, err := orchestrator.LoadPersona(personaName)
 	if err != nil {
-		log.Fatalf("Failed to load persona %q: %v", personaName, err)
+		log.Printf("⚠️  Failed to load persona %q, attempting fallback to generic_assistant: %v", personaName, err)
+		personaDef, err = orchestrator.LoadPersona("generic_assistant")
+		if err != nil {
+			log.Fatalf("❌ Failed to load fallback persona: %v", err)
+		}
 	}
+
+	log.Printf("✅ Loaded persona: %s (v%d)", personaDef.Name, personaDef.Version)
 
 	// Use persona's model settings if provided, otherwise use environment variables
 	textModel := os.Getenv("TEXT_MODEL")
 	if textModel == "" {
-		textModel = persona.TextModel
+		textModel = personaDef.TextModel
 	}
+	if textModel == "" {
+		textModel = "qwen2:7b"
+	}
+
 	visionModel := os.Getenv("VISION_MODEL")
 	if visionModel == "" {
-		visionModel = persona.VisionModel
+		visionModel = personaDef.VisionModel
+	}
+	if visionModel == "" {
+		visionModel = "llava:7b"
 	}
 
 	embeddingModel := os.Getenv("EMBEDDING_MODEL")
@@ -67,20 +89,36 @@ func main() {
 		embeddingModel = "nomic-embed-text"
 	}
 
+	// ============= INITIALIZE LLMS & PIPELINE =============
 	ctx := context.Background()
 	wf, err := orchestrator.NewAgentWorkflow(ctx, textModel, visionModel)
 	if err != nil {
-		log.Fatalf("Failed to create workflow: %v", err)
+		log.Fatalf("❌ Failed to create workflow: %v", err)
 	}
+
+	// Initialize Pipeline with the LLMs from workflow
+	pipeline := orchestrator.NewPipeline(
+		nil, // Will be set when Qdrant is ready
+		wf.TextAgent,
+		wf.TextAgent,
+		wf.VisionAgent,
+		embeddingModel,
+	)
+
+	// Create persona executor for intent classification and response validation
+	personaExecutor := orchestrator.NewPersonaExecutor(wf.TextAgent)
 
 	s := grpc.NewServer()
 
 	srv := &server{
-		workflow:       wf,
-		textModel:      textModel,
-		visionModel:    visionModel,
-		embeddingModel: embeddingModel,
-		activeSessions: make(map[string]*SessionNode),
+		workflow:        wf,
+		pipeline:        pipeline,
+		persona:         personaDef,
+		personaExecutor: personaExecutor,
+		textModel:       textModel,
+		visionModel:     visionModel,
+		embeddingModel:  embeddingModel,
+		activeSessions:  make(map[string]*SessionNode),
 	}
 
 	// 🎯 Initialize tool registry once
@@ -88,6 +126,15 @@ func main() {
 
 	// 🌐 Initialize MCP servers and load adapter tools via config path
 	initializeMCPServers(ctx, srv)
+
+	// 🐰 Initialize RabbitMQ queue consumer
+	if err := srv.initializeRabbitMQ(); err != nil {
+		log.Printf("⚠️  RabbitMQ initialization failed: %v (gRPC-only mode)", err)
+	} else {
+		log.Println("✅ RabbitMQ queue consumer initialized")
+		// Start consuming messages from orchestrator.requests queue
+		go srv.consumeRequestQueue()
+	}
 
 	// Fire up Qdrant initialization concurrently...
 	go func() {
@@ -102,7 +149,18 @@ func main() {
 			}
 
 			srv.qdrantClient = client
+
+			// Reinitialize pipeline with Qdrant client now that it's ready
+			srv.pipeline = orchestrator.NewPipeline(
+				client,
+				wf.TextAgent,
+				wf.TextAgent,
+				wf.VisionAgent,
+				embeddingModel,
+			)
+
 			log.Println("✅ Background thread: Qdrant client connected and successfully wired.")
+			log.Println("✅ Background thread: Pipeline reinitialized with Qdrant client.")
 			break
 		}
 	}()
@@ -115,7 +173,24 @@ func main() {
 		log.Fatalf("Failed to listen on :9000: %v", err)
 	}
 
-	log.Printf("🚀 Orchestrator running on :9000 [Persona: %s, Text: %s, Vision: %s, Tools: ENABLED]", persona.Name, textModel, visionModel)
+	log.Printf("🚀 Orchestrator running on :9000")
+	log.Printf("   Persona: %s (v%d)", personaDef.Name, personaDef.Version)
+	log.Printf("   Text Model: %s | Vision Model: %s", textModel, visionModel)
+	log.Printf("   Embedding: %s | Queue: RabbitMQ", embeddingModel)
+	log.Printf("   Intents: %d | Validation Gates: %d", len(personaDef.Intents), len(personaDef.ValidationGates))
+
+	// Handle graceful shutdown
+	defer func() {
+		if srv.rabbitmqCh != nil {
+			srv.rabbitmqCh.Close()
+		}
+		if srv.rabbitmqConn != nil {
+			srv.rabbitmqConn.Close()
+		}
+		s.GracefulStop()
+		log.Println("✅ Orchestrator shutdown complete")
+	}()
+
 	if err := s.Serve(lis); err != nil {
 		log.Fatalf("Failed to serve: %v", err)
 	}
@@ -250,6 +325,22 @@ func (s *server) Chat(ctx context.Context, req *v1.ChatRequest) (*v1.ChatRespons
 
 	sessionID, parentVectorID := s.lookupOrInitializeSession(ctx, userID, userMsg)
 
+	log.Printf("\n📨 CHAT REQUEST [Persona: %s]", s.persona.Name)
+	log.Printf("   User: %s | Session: %s | Vision: %v", userID, sessionID, isVision)
+
+	// Classify intent using persona executor
+	pctx := &orchestrator.PersonaContext{
+		Definition: s.persona,
+		Evidence:   map[string]interface{}{"message": userMsg},
+	}
+
+	intent, confidence := s.personaExecutor.ClassifyIntent(userMsg, pctx)
+	log.Printf("   Intent: %s (confidence: %.0f%%)", intent, confidence*100)
+
+	// Get response mode for this intent
+	rule := s.personaExecutor.GetModeForIntent(intent, s.persona)
+	log.Printf("   Mode: %s | Search: %v | Template: %s", rule.Mode, rule.SearchEnabled, rule.Template)
+
 	var result string
 	var err error
 	if s.toolRegistry != nil {
@@ -259,8 +350,20 @@ func (s *server) Chat(ctx context.Context, req *v1.ChatRequest) (*v1.ChatRespons
 	}
 
 	if err != nil {
-		log.Printf("Workflow error: %v", err)
+		log.Printf("❌ Workflow error: %v", err)
 		return nil, err
+	}
+
+	// Validate response against persona rules
+	issues := s.personaExecutor.ValidateResponseAgainstRules(result, rule.Mode, s.persona)
+	if len(issues) > 0 {
+		log.Printf("⚠️  Response validation issues (%d):", len(issues))
+		for _, issue := range issues {
+			log.Printf("   - %s [%s]: %s", issue.Gate, issue.Severity, issue.Message)
+			if issue.Severity == "error" {
+				log.Printf("     Fix: %s", issue.Fix)
+			}
+		}
 	}
 
 	if s.qdrantClient != nil {
@@ -287,7 +390,76 @@ func (s *server) Chat(ctx context.Context, req *v1.ChatRequest) (*v1.ChatRespons
 		Message: &v1.Message{
 			Role:    "assistant",
 			Content: result,
+			PersonaMetadata: &v1.PersonaMetadata{
+				PersonaName: s.persona.Name,
+				Intent:      intent,
+				Mode:        rule.Mode,
+				Confidence:  confidence,
+			},
 		},
+	}, nil
+}
+
+// GetPersona returns details about the current active persona
+func (s *server) GetPersona(ctx context.Context, req *v1.GetPersonaRequest) (*v1.PersonaResponse, error) {
+	if s.persona == nil {
+		return nil, fmt.Errorf("no persona loaded")
+	}
+
+	intentList := make([]*v1.IntentConfig, 0)
+	for name, rule := range s.persona.Intents {
+		intentList = append(intentList, &v1.IntentConfig{
+			Name:     name,
+			Mode:     rule.Mode,
+			Template: rule.Template,
+		})
+	}
+
+	canHandle := make([]string, len(s.persona.Capabilities.CanHandle))
+	copy(canHandle, s.persona.Capabilities.CanHandle)
+
+	cannotHandle := make([]string, len(s.persona.Capabilities.CannotHandle))
+	copy(cannotHandle, s.persona.Capabilities.CannotHandle)
+
+	return &v1.PersonaResponse{
+		Name:           s.persona.Name,
+		Version:        int32(s.persona.Version),
+		Description:    s.persona.Description,
+		CanHandle:      canHandle,
+		CannotHandle:   cannotHandle,
+		Intents:        intentList,
+		TextModel:      s.persona.TextModel,
+		VisionModel:    s.persona.VisionModel,
+	}, nil
+}
+
+// ListPersonas returns available personas
+func (s *server) ListPersonas(ctx context.Context, req *v1.ListPersonasRequest) (*v1.ListPersonasResponse, error) {
+	personas, err := orchestrator.ListAvailablePersonas()
+	if err != nil {
+		log.Printf("❌ Failed to list personas: %v", err)
+		return nil, fmt.Errorf("failed to list personas: %w", err)
+	}
+
+	var personalInfos []*v1.PersonaInfo
+	for _, name := range personas {
+		persona, err := orchestrator.LoadPersona(name)
+		if err != nil {
+			log.Printf("⚠️  Failed to load persona %q: %v", name, err)
+			continue
+		}
+
+		isActive := (name == s.persona.Name)
+		personalInfos = append(personalInfos, &v1.PersonaInfo{
+			Name:        persona.Name,
+			Version:     int32(persona.Version),
+			Description: persona.Description,
+			IsActive:    isActive,
+		})
+	}
+
+	return &v1.ListPersonasResponse{
+		Personas: personalInfos,
 	}, nil
 }
 
@@ -302,4 +474,225 @@ func (s *server) ListMCPTools(ctx context.Context, req *v1.ListMCPToolsRequest) 
 	return &v1.ListMCPToolsResponse{
 		ToolsByServer: make(map[string]*v1.ToolList),
 	}, nil
+}
+
+// ============= RABBITMQ INITIALIZATION =============
+
+func (s *server) initializeRabbitMQ() error {
+	rabbitmqURL := os.Getenv("RABBITMQ_URL")
+	if rabbitmqURL == "" {
+		rabbitmqURL = "amqp://indieclaw:secretpass@localhost:5672/"
+	}
+
+	conn, err := amqp.Dial(rabbitmqURL)
+	if err != nil {
+		return fmt.Errorf("failed to connect to RabbitMQ: %w", err)
+	}
+
+	ch, err := conn.Channel()
+	if err != nil {
+		conn.Close()
+		return fmt.Errorf("failed to open channel: %w", err)
+	}
+
+	// Declare request queue (durable, FIFO)
+	reqQueue, err := ch.QueueDeclare(
+		"orchestrator.requests",
+		true,  // durable
+		false, // delete when unused
+		false, // exclusive
+		false, // no-wait
+		nil,   // arguments
+	)
+	if err != nil {
+		ch.Close()
+		conn.Close()
+		return fmt.Errorf("failed to declare request queue: %w", err)
+	}
+
+	// Declare response queue (durable, auto-expire after 1 hour)
+	respQueue, err := ch.QueueDeclare(
+		"orchestrator.responses",
+		true,  // durable
+		false, // delete when unused
+		false, // exclusive
+		false, // no-wait
+		amqp.Table{"x-expires": 3600000}, // 1 hour TTL in milliseconds
+	)
+	if err != nil {
+		ch.Close()
+		conn.Close()
+		return fmt.Errorf("failed to declare response queue: %w", err)
+	}
+
+	// Set QoS to 1: process one message at a time per orchestrator instance
+	err = ch.Qos(1, 0, false)
+	if err != nil {
+		ch.Close()
+		conn.Close()
+		return fmt.Errorf("failed to set QoS: %w", err)
+	}
+
+	s.rabbitmqConn = conn
+	s.rabbitmqCh = ch
+	s.reqQueue = reqQueue
+	s.respQueue = respQueue
+
+	log.Printf("🐰 RabbitMQ connected: requests=[%d], responses=[%d]", reqQueue.Messages, respQueue.Messages)
+	return nil
+}
+
+// ============= RABBITMQ MESSAGE CONSUMER =============
+
+type QueueRequest struct {
+	CorrelationID  string   `json:"correlationId"`
+	PhoneNumber    string   `json:"phoneNumber"`
+	Message        string   `json:"message"`
+	Timestamp      int64    `json:"timestamp"`
+	IdempotencyKey string   `json:"idempotencyKey"`
+	Images         []string `json:"images,omitempty"`
+}
+
+type QueueResponse struct {
+	CorrelationID   string `json:"correlationId"`
+	PhoneNumber     string `json:"phoneNumber"`
+	Result          string `json:"result,omitempty"`
+	Error           string `json:"error,omitempty"`
+	Status          string `json:"status"` // "success" or "error"
+	Timestamp       int64  `json:"timestamp"`
+	ProcessingTimeMs int64 `json:"processingTimeMs"`
+}
+
+func (s *server) consumeRequestQueue() {
+	if s.rabbitmqCh == nil {
+		log.Println("⚠️  RabbitMQ channel not initialized, skipping consumer")
+		return
+	}
+
+	msgs, err := s.rabbitmqCh.Consume(
+		s.reqQueue.Name,
+		"",    // consumer tag
+		false, // auto-ack (we'll ack manually)
+		false, // exclusive
+		false, // no-local
+		false, // no-wait
+		nil,   // args
+	)
+	if err != nil {
+		log.Printf("❌ Failed to start consuming: %v", err)
+		return
+	}
+
+	log.Printf("🎧 Started consuming from queue: %s", s.reqQueue.Name)
+
+	for delivery := range msgs {
+		var req QueueRequest
+		err := json.Unmarshal(delivery.Body, &req)
+		if err != nil {
+			log.Printf("❌ Failed to unmarshal request: %v", err)
+			delivery.Nack(false, false) // reject and don't requeue
+			continue
+		}
+
+		log.Printf("📨 Processing request [%s] from %s", req.CorrelationID, req.PhoneNumber)
+
+		// Process the request through the pipeline
+		s.handleQueueRequest(req, delivery)
+	}
+}
+
+func (s *server) handleQueueRequest(req QueueRequest, delivery amqp.Delivery) {
+	startTime := time.Now()
+
+	// Get the loaded persona
+	persona := orchestrator.GetPersona()
+	if persona == nil {
+		log.Printf("❌ No persona loaded for request [%s]", req.CorrelationID)
+		s.publishErrorResponse(req, "No persona configured", startTime)
+		delivery.Ack(false)
+		return
+	}
+
+	// Determine if this is a vision request
+	isVision := len(req.Images) > 0
+	var imageBase64 string
+	if isVision && len(req.Images) > 0 {
+		imageBase64 = req.Images[0]
+	}
+
+	// Execute pipeline with longer timeout
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
+	defer cancel()
+
+	result, err := s.pipeline.Execute(ctx, req.Message, req.CorrelationID, persona, isVision, imageBase64)
+
+	if err != nil {
+		log.Printf("❌ Pipeline error [%s]: %v", req.CorrelationID, err)
+		s.publishErrorResponse(req, err.Error(), startTime)
+	} else {
+		log.Printf("✅ Pipeline completed [%s]: %d chars", req.CorrelationID, len(result))
+		s.publishSuccessResponse(req, result, startTime)
+	}
+
+	// Acknowledge the message only after we've published the response
+	delivery.Ack(false)
+	log.Printf("✓ ACK'd request [%s]", req.CorrelationID)
+}
+
+func (s *server) publishSuccessResponse(req QueueRequest, result string, startTime time.Time) {
+	resp := QueueResponse{
+		CorrelationID:   req.CorrelationID,
+		PhoneNumber:     req.PhoneNumber,
+		Result:          result,
+		Status:          "success",
+		Timestamp:       time.Now().Unix(),
+		ProcessingTimeMs: time.Since(startTime).Milliseconds(),
+	}
+
+	s.publishResponse(resp)
+}
+
+func (s *server) publishErrorResponse(req QueueRequest, errMsg string, startTime time.Time) {
+	resp := QueueResponse{
+		CorrelationID:   req.CorrelationID,
+		PhoneNumber:     req.PhoneNumber,
+		Error:           errMsg,
+		Status:          "error",
+		Timestamp:       time.Now().Unix(),
+		ProcessingTimeMs: time.Since(startTime).Milliseconds(),
+	}
+
+	s.publishResponse(resp)
+}
+
+func (s *server) publishResponse(resp QueueResponse) {
+	if s.rabbitmqCh == nil {
+		log.Printf("❌ RabbitMQ channel not available, cannot publish response [%s]", resp.CorrelationID)
+		return
+	}
+
+	body, err := json.Marshal(resp)
+	if err != nil {
+		log.Printf("❌ Failed to marshal response: %v", err)
+		return
+	}
+
+	err = s.rabbitmqCh.Publish(
+		"",              // exchange
+		s.respQueue.Name, // routing key (queue name)
+		false,           // mandatory
+		false,           // immediate
+		amqp.Publishing{
+			ContentType:   "application/json",
+			CorrelationId: resp.CorrelationID,
+			Body:          body,
+		},
+	)
+
+	if err != nil {
+		log.Printf("❌ Failed to publish response [%s]: %v", resp.CorrelationID, err)
+		return
+	}
+
+	log.Printf("📤 Published response [%s] to %s", resp.CorrelationID, s.respQueue.Name)
 }

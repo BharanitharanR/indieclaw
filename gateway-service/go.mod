@@ -3,6 +3,7 @@ module gateway-service
 go 1.26
 
 require (
+	github.com/BurntSushi/toml v0.3.1
 	github.com/Protocol-Lattice/go-agent v1.14.1
 	github.com/google/uuid v1.6.0
 	github.com/mark3labs/mcp-go v0.57.0
@@ -10,6 +11,7 @@ require (
 	github.com/ollama/ollama v0.12.5
 	github.com/pelletier/go-toml/v2 v2.2.2
 	github.com/qdrant/go-client v1.18.3
+	github.com/rabbitmq/amqp091-go v1.13.0
 	github.com/tmc/langchaingo v0.1.14
 	google.golang.org/grpc v1.82.0
 	google.golang.org/protobuf v1.36.11

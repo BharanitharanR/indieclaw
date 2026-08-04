@@ -1,0 +1,181 @@
+================================================================================
+                   🎯 INDIECLAW - QUICK START GUIDE
+================================================================================
+
+INSTALLATION (ONE-TIME, ~60 minutes):
+────────────────────────────────────────────────────────────────────────────
+  bash install.sh
+
+  This installs:
+    ✅ Go, Node.js, Homebrew
+    ✅ RabbitMQ, Qdrant, Ollama
+    ✅ Python, LLM Models (~50GB)
+    ✅ Configuration files
+    ✅ Startup scripts
+
+================================================================================
+
+EVERY DAY - START SERVICES (ONCE PER SESSION):
+────────────────────────────────────────────────────────────────────────────
+  ~/.indieclaw/start-services.sh
+
+  Starts:
+    🐰 RabbitMQ (5672)
+    🗄️  Qdrant (6334)
+    🤖 Ollama (11434)
+
+  Wait 5 seconds for all to start.
+
+================================================================================
+
+RUNNING INDIECLAW (3 TERMINAL WINDOWS):
+────────────────────────────────────────────────────────────────────────────
+
+TERMINAL 1 - ORCHESTRATOR:
+  cd ~/indieclaw/gateway-service
+  source ~/.indieclaw/indieclaw.env
+  go run ./cmd/orchestrator/main.go
+
+  Expected log: "🚀 Orchestrator running on :9000"
+
+TERMINAL 2 - WHATSAPP ADAPTER:
+  cd ~/indieclaw/approach-road/wa-echo-loop
+  source ~/.indieclaw/indieclaw.env
+  npm install (first time only)
+  node app.js
+
+  Expected log: "✅ WhatsApp Bot ready!"
+  Action: Scan QR code with WhatsApp
+
+TERMINAL 3 - CONTROL PLANE (Optional):
+  cd ~/indieclaw/persona-control-plane
+  node server.js
+
+  Access: http://localhost:3001
+  (Edit personas without restarting)
+
+================================================================================
+
+QUICK CHECKS:
+────────────────────────────────────────────────────────────────────────────
+
+Are services running?
+  ps aux | grep -E 'rabbitmq|qdrant|ollama'
+
+Test RabbitMQ:
+  curl http://localhost:15672  (admin UI)
+
+Test Qdrant:
+  curl http://localhost:6333/health
+
+Test Ollama:
+  curl http://localhost:11434/api/tags
+
+Test Orchestrator:
+  tail -f ~/.indieclaw/logs/orchestrator.log
+
+================================================================================
+
+COMMON COMMANDS:
+────────────────────────────────────────────────────────────────────────────
+
+Stop all services:
+  brew services stop rabbitmq qdrant
+  pkill -f "ollama serve"
+
+View logs:
+  tail -f ~/.indieclaw/logs/orchestrator.log
+  tail -f ~/.indieclaw/logs/ollama.log
+
+Edit configuration:
+  vi ~/.indieclaw/indieclaw.env
+
+Edit persona:
+  vi ~/indieclaw/gateway-service/config/personas/executive_coach.toml
+
+Check RabbitMQ queue:
+  curl http://localhost:15672/api/queues
+
+================================================================================
+
+PORTS USED:
+────────────────────────────────────────────────────────────────────────────
+  5672    RabbitMQ (AMQP)
+  15672   RabbitMQ Admin
+  6334    Qdrant (gRPC)
+  6333    Qdrant (HTTP)
+  11434   Ollama
+  9000    Orchestrator
+  3001    Control Plane
+
+If port is in use: lsof -i :PORT
+
+================================================================================
+
+TROUBLESHOOTING:
+────────────────────────────────────────────────────────────────────────────
+
+Model download stuck?
+  Don't interrupt. Takes 30-60 mins for first time.
+  Or: ollama pull qwen3:8b (manual)
+
+RabbitMQ not starting?
+  brew services restart rabbitmq
+  Check: sudo rabbitmqctl status
+
+Qdrant not connecting?
+  brew services restart qdrant
+  Check: curl http://localhost:6333/health
+
+WhatsApp QR expired?
+  Just restart: node app.js
+  Scan new QR code
+
+Go build error?
+  go mod tidy
+  go build ./cmd/orchestrator
+
+Node modules error?
+  rm -rf node_modules package-lock.json
+  npm install
+
+================================================================================
+
+FULL DOCUMENTATION:
+────────────────────────────────────────────────────────────────────────────
+  • Installation details: INSTALLATION.md
+  • Prerequisites list: INDIECLAW_PREREQUISITES.md
+  • Architecture guide: (in repo)
+
+================================================================================
+
+📞 TESTING YOUR BOT:
+────────────────────────────────────────────────────────────────────────────
+  1. Start all components (3 terminals)
+  2. WhatsApp adapter will show QR code
+  3. Scan QR with WhatsApp on your phone
+  4. Send message: "Self Hello there"
+  5. Bot should reply within 30 seconds
+
+📝 TO EDIT PERSONA:
+  1. Open http://localhost:3001
+  2. Edit prompt, tone, models
+  3. Click "Save Changes"
+  4. Restart orchestrator (Ctrl+C, then re-run)
+
+================================================================================
+
+⚠️  MINIMUM REQUIREMENTS:
+────────────────────────────────────────────────────────────────────────────
+  • macOS with Apple Silicon (M1/M2/M3+)
+  • 16GB RAM (8GB minimum, will be slow)
+  • 80GB free disk space
+  • Internet connection (for setup)
+
+================================================================================
+
+🚀 YOU'RE READY! Enjoy your personal AI assistant!
+
+Questions? Check INSTALLATION.md or review logs in ~/.indieclaw/logs/
+
+================================================================================

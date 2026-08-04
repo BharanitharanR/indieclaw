@@ -19,8 +19,8 @@ import (
 )
 
 type AgentWorkflow struct {
-	textAgent   *ollama.LLM
-	visionAgent *ollama.LLM
+	TextAgent   *ollama.LLM
+	VisionAgent *ollama.LLM
 }
 
 // ReActStep represents a parsed step from our internal execution planner
@@ -46,7 +46,7 @@ func NewAgentWorkflowCustom(ctx context.Context, textModelName, visionModelName 
 		return nil, err
 	}
 
-	return &AgentWorkflow{textAgent: textLLM, visionAgent: visionLLM}, nil
+	return &AgentWorkflow{TextAgent: textLLM, VisionAgent: visionLLM}, nil
 }
 
 func NewAgentWorkflow(ctx context.Context, textModelName, visionModelName string) (*AgentWorkflow, error) {
@@ -69,8 +69,8 @@ func NewAgentWorkflow(ctx context.Context, textModelName, visionModelName string
 	}
 
 	return &AgentWorkflow{
-		textAgent:   textLLM,
-		visionAgent: visionLLM,
+		TextAgent:   textLLM,
+		VisionAgent: visionLLM,
 	}, nil
 }
 
@@ -91,7 +91,7 @@ func (w *AgentWorkflow) Run(ctx context.Context, sessionID string, input string,
 			llms.ImageURLPart("data:image/jpeg;base64," + imageBase64),
 		}
 
-		resp, err := w.visionAgent.GenerateContent(ctx, []llms.MessageContent{
+		resp, err := w.VisionAgent.GenerateContent(ctx, []llms.MessageContent{
 			{
 				Role:  llms.ChatMessageTypeHuman,
 				Parts: contentParts,
@@ -126,7 +126,7 @@ JSON Structure:
 
 User Prompt: "%s"`, input)
 
-	rawPlanResp, err := llms.GenerateFromSinglePrompt(ctx, w.textAgent, planPrompt)
+	rawPlanResp, err := llms.GenerateFromSinglePrompt(ctx, w.TextAgent, planPrompt)
 	if err != nil {
 		return "", fmt.Errorf("planning phase generation failed: %w", err)
 	}
@@ -136,7 +136,7 @@ User Prompt: "%s"`, input)
 	var plan ReActPlan
 	if err := json.Unmarshal([]byte(planString), &plan); err != nil {
 		log.Printf("WARN: Failed parsing model plan JSON. Fallback to direct resolution. Error: %v Raw: %s", err, planString)
-		directResp, err := llms.GenerateFromSinglePrompt(ctx, w.textAgent, input)
+		directResp, err := llms.GenerateFromSinglePrompt(ctx, w.TextAgent, input)
 		return extractString(directResp), err
 	}
 
@@ -151,7 +151,7 @@ User Prompt: "%s"`, input)
 		}
 		executionTask := fmt.Sprintf("Task: %s. Provide the result or answer for this task.", step.Action)
 
-		actionResult, err := llms.GenerateFromSinglePrompt(ctx, w.textAgent, executionTask)
+		actionResult, err := llms.GenerateFromSinglePrompt(ctx, w.TextAgent, executionTask)
 		if err != nil {
 			return "", fmt.Errorf("action execution failed: %w", err)
 		}
@@ -167,7 +167,7 @@ Observations: %v
 Original User Query: %s`, observations, input)
 
 	log.Printf("⚙️ Synthesizing observation: %s", observations)
-	finalResult, err := llms.GenerateFromSinglePrompt(ctx, w.textAgent, synthesisPrompt)
+	finalResult, err := llms.GenerateFromSinglePrompt(ctx, w.TextAgent, synthesisPrompt)
 	if err != nil {
 		return "", fmt.Errorf("final logic synthesis failed: %w", err)
 	}

@@ -3,6 +3,7 @@ const fs = require('fs');
 const path = require('path');
 const bodyParser = require('body-parser');
 const toml = require('toml');
+const tomlStringify = require('@iarna/toml').stringify;
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -124,6 +125,65 @@ app.get('/api/status', (req, res) => {
     personasDir,
     personasCount: fs.readdirSync(personasDir).filter(f => f.endsWith('.toml')).length,
   });
+});
+
+// ============ STRUCTURED PERSONA CONFIG ENDPOINTS ============
+
+// GET /api/persona - Get structured persona config (form-friendly)
+app.get('/api/persona', (req, res) => {
+  try {
+    const personaName = req.query.name || 'executive_coach';
+    const filePath = path.join(personasDir, `${personaName}.toml`);
+
+    console.log(`[/api/persona] Loading: ${personaName}`);
+    console.log(`[/api/persona] Path: ${filePath}`);
+    console.log(`[/api/persona] Exists: ${fs.existsSync(filePath)}`);
+
+    if (!fs.existsSync(filePath)) {
+      console.error(`[/api/persona] File not found at ${filePath}`);
+      return res.status(404).json({ error: `Persona file not found at ${filePath}` });
+    }
+
+    const content = fs.readFileSync(filePath, 'utf8');
+    const config = toml.parse(content);
+
+    console.log(`[/api/persona] Successfully loaded ${personaName}`);
+    res.json({
+      name: personaName,
+      config: config
+    });
+  } catch (err) {
+    console.error(`[/api/persona] Error:`, err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST /api/persona - Save structured persona config (form-friendly)
+app.post('/api/persona', (req, res) => {
+  try {
+    const { config } = req.body;
+    const personaName = req.query.name || 'executive_coach';
+
+    console.log(`[POST /api/persona] Saving: ${personaName}`);
+
+    if (!config) {
+      return res.status(400).json({ error: 'No config provided' });
+    }
+
+    const filePath = path.join(personasDir, `${personaName}.toml`);
+    const tomlString = tomlStringify(config);
+    fs.writeFileSync(filePath, tomlString, 'utf8');
+
+    console.log(`[POST /api/persona] Successfully saved ${personaName}`);
+    res.json({
+      success: true,
+      message: `Persona '${personaName}' updated successfully`,
+      path: filePath
+    });
+  } catch (err) {
+    console.error(`[POST /api/persona] Error:`, err);
+    res.status(500).json({ error: err.message });
+  }
 });
 
 // ============ Server Start ============

@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Persona Control Plane</title>
+    <title>Indieclaw - Persona Configuration</title>
     <style>
         * {
             margin: 0;
@@ -12,653 +12,576 @@
         }
 
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #f5f1e8 0%, #ede8df 100%);
-            color: #5a5450;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             min-height: 100vh;
+            padding: 20px;
         }
 
         .container {
-            display: flex;
-            height: 100vh;
-            gap: 0;
+            max-width: 900px;
+            margin: 0 auto;
         }
 
-        /* Sidebar */
-        .sidebar {
-            width: 280px;
-            background: #faf7f2;
-            border-right: 1px solid #e8dfd6;
+        header {
+            background: white;
+            border-radius: 12px;
+            padding: 30px;
+            margin-bottom: 30px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+        }
+
+        header h1 {
+            font-size: 32px;
+            color: #333;
+            margin-bottom: 8px;
+        }
+
+        header p {
+            color: #666;
+            font-size: 16px;
+        }
+
+        .form-container {
+            background: white;
+            border-radius: 12px;
+            padding: 40px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+        }
+
+        .form-section {
+            margin-bottom: 40px;
+            padding-bottom: 40px;
+            border-bottom: 1px solid #eee;
+        }
+
+        .form-section:last-child {
+            border-bottom: none;
+            margin-bottom: 0;
+            padding-bottom: 0;
+        }
+
+        .section-title {
+            font-size: 20px;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 20px;
             display: flex;
-            flex-direction: column;
-            padding: 24px 16px;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .section-title::before {
+            content: attr(data-icon);
+            font-size: 24px;
+        }
+
+        .form-group {
+            margin-bottom: 25px;
+        }
+
+        label {
+            display: block;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 8px;
+            font-size: 14px;
+        }
+
+        .help-text {
+            display: block;
+            font-size: 13px;
+            color: #666;
+            margin-bottom: 10px;
+            line-height: 1.4;
+        }
+
+        input[type="text"],
+        input[type="number"],
+        textarea,
+        select {
+            width: 100%;
+            padding: 12px 14px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            font-family: inherit;
+            font-size: 14px;
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+
+        input[type="text"]:focus,
+        input[type="number"]:focus,
+        textarea:focus,
+        select:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        textarea {
+            resize: vertical;
+            min-height: 120px;
+            font-family: 'Monaco', 'Menlo', monospace;
+            font-size: 13px;
+        }
+
+        .phone-list {
+            background: #f9f9f9;
+            border: 1px solid #eee;
+            border-radius: 8px;
+            padding: 12px;
+            margin-top: 8px;
+        }
+
+        .phone-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 8px 12px;
+            background: white;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            margin-bottom: 8px;
+            font-size: 14px;
+        }
+
+        .phone-item:last-child {
+            margin-bottom: 0;
+        }
+
+        .phone-item button {
+            background: #ff6b6b;
+            color: white;
+            border: none;
+            padding: 4px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+            transition: background 0.2s;
+        }
+
+        .phone-item button:hover {
+            background: #ee5a52;
+        }
+
+        .add-phone-group {
+            display: flex;
+            gap: 8px;
+            margin-top: 8px;
+        }
+
+        .add-phone-group input {
+            flex: 1;
+        }
+
+        .add-phone-group button {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 12px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: background 0.2s;
+        }
+
+        .add-phone-group button:hover {
+            background: #5568d3;
+        }
+
+        .button-group {
+            display: flex;
+            gap: 12px;
+            margin-top: 40px;
+            justify-content: flex-end;
+        }
+
+        button {
+            padding: 14px 28px;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn-save {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            min-width: 150px;
+        }
+
+        .btn-save:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
+        }
+
+        .btn-save:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .btn-reset {
+            background: #f0f0f0;
+            color: #333;
+            min-width: 150px;
+        }
+
+        .btn-reset:hover {
+            background: #e0e0e0;
+        }
+
+        .message {
+            padding: 14px 16px;
+            border-radius: 8px;
+            margin-top: 20px;
+            display: none;
+            font-size: 14px;
+        }
+
+        .message.show {
+            display: block;
+        }
+
+        .message.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .message.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        .loading {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border: 2px solid #f3f3f3;
+            border-top: 2px solid #667eea;
+            border-radius: 50%;
+            animation: spin 0.6s linear infinite;
+            margin-right: 8px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .checkbox-group {
+            display: flex;
+            gap: 20px;
+            margin-top: 8px;
+        }
+
+        .checkbox-group label {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin: 0;
+            font-weight: normal;
+        }
+
+        input[type="checkbox"] {
+            width: auto;
+            cursor: pointer;
+        }
+
+        .row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+
+        .sidebar {
+            position: fixed;
+            left: 0;
+            top: 0;
+            width: 280px;
+            height: 100vh;
+            background: linear-gradient(180deg, #667eea 0%, #764ba2 100%);
+            padding: 20px;
             overflow-y: auto;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+            z-index: 1000;
         }
 
         .sidebar-header {
+            color: white;
             font-size: 18px;
-            font-weight: 600;
-            color: #6b6359;
-            margin-bottom: 24px;
-            padding-bottom: 12px;
-            border-bottom: 1px solid #e8dfd6;
+            font-weight: 700;
+            margin-bottom: 25px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.2);
         }
 
         .personas-list {
             display: flex;
             flex-direction: column;
             gap: 8px;
-            margin-bottom: 24px;
         }
 
         .persona-item {
-            padding: 10px 12px;
-            background: white;
-            border: 1px solid #e8dfd6;
-            border-radius: 6px;
+            padding: 12px 16px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
             cursor: pointer;
-            transition: all 0.2s ease;
+            color: white;
             font-size: 14px;
-            color: #6b6359;
+            transition: all 0.2s;
+            border: 2px solid transparent;
         }
 
         .persona-item:hover {
-            background: #f0ebe2;
-            border-color: #d9cdbf;
+            background: rgba(255, 255, 255, 0.2);
+            transform: translateX(4px);
         }
 
         .persona-item.active {
-            background: #e8dfd6;
-            border-color: #d9cdbf;
-            font-weight: 500;
-        }
-
-        .sidebar-actions {
-            display: flex;
-            gap: 8px;
-            margin-top: auto;
-        }
-
-        .btn-small {
-            flex: 1;
-            padding: 8px 12px;
-            background: white;
-            border: 1px solid #e8dfd6;
-            border-radius: 6px;
-            cursor: pointer;
-            font-size: 12px;
-            color: #6b6359;
-            transition: all 0.2s ease;
-        }
-
-        .btn-small:hover {
-            background: #f0ebe2;
-            border-color: #d9cdbf;
-        }
-
-        .btn-small.primary {
-            background: #d9cdbf;
-            border-color: #c9bfb0;
-            font-weight: 500;
-        }
-
-        .btn-small.primary:hover {
-            background: #c9bfb0;
-        }
-
-        .btn-small.danger {
-            background: #f5e8e8;
-            border-color: #e8d9d9;
-            color: #8b5a5a;
-        }
-
-        .btn-small.danger:hover {
-            background: #e8d9d9;
-        }
-
-        /* Main Content */
-        .main-content {
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-            background: white;
-        }
-
-        .header {
-            padding: 20px 24px;
-            border-bottom: 1px solid #e8ddf6;
-            background: white;
-        }
-
-        .header h1 {
-            font-size: 24px;
-            color: #6b6359;
-            margin-bottom: 4px;
-        }
-
-        .header p {
-            font-size: 13px;
-            color: #9b9389;
-        }
-
-        .content-area {
-            flex: 1;
-            overflow-y: auto;
-            padding: 24px;
-        }
-
-        .section {
-            margin-bottom: 24px;
-        }
-
-        .section-title {
-            font-size: 14px;
+            background: rgba(255, 255, 255, 0.25);
+            border-color: white;
             font-weight: 600;
-            color: #6b6359;
-            margin-bottom: 12px;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
         }
 
-        .form-group {
-            margin-bottom: 16px;
+        .persona-item-icon {
+            display: inline-block;
+            margin-right: 8px;
         }
 
-        .form-group label {
-            display: block;
-            font-size: 13px;
-            color: #6b6359;
-            margin-bottom: 6px;
-            font-weight: 500;
+        .personas-actions {
+            margin-top: 30px;
+            padding-top: 15px;
+            border-top: 1px solid rgba(255, 255, 255, 0.2);
         }
 
-        .form-group input,
-        .form-group textarea,
-        .form-group select {
+        .btn-new-persona {
             width: 100%;
-            padding: 10px 12px;
-            border: 1px solid #e8dfd6;
-            border-radius: 6px;
-            font-family: inherit;
+            padding: 12px;
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
             font-size: 13px;
-            color: #5a5450;
-            background: #faf7f2;
-            transition: all 0.2s ease;
+            transition: all 0.2s;
         }
 
-        .form-group textarea {
-            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
-            font-size: 12px;
-            min-height: 400px;
-            resize: vertical;
+        .btn-new-persona:hover {
+            background: rgba(255, 255, 255, 0.3);
+            border-color: white;
         }
 
-        .form-group input:focus,
-        .form-group textarea:focus,
-        .form-group select:focus {
-            outline: none;
-            background: white;
-            border-color: #d9cdbf;
-            box-shadow: 0 0 0 3px rgba(217, 205, 191, 0.1);
+        body {
+            margin-left: 280px;
         }
 
-        .phone-list {
-            display: flex;
-            flex-direction: column;
-            gap: 8px;
-        }
-
-        .phone-item {
-            display: flex;
-            gap: 8px;
-            align-items: center;
-        }
-
-        .phone-item input {
-            flex: 1;
-        }
-
-        .btn-remove {
-            padding: 8px 12px;
-            background: #f5e8e8;
-            border: 1px solid #e8d9d9;
-            border-radius: 4px;
-            cursor: pointer;
-            color: #8b5a5a;
-            font-size: 12px;
-            transition: all 0.2s ease;
-        }
-
-        .btn-remove:hover {
-            background: #e8d9d9;
-        }
-
-        .btn-add-phone {
-            padding: 8px 12px;
-            background: #f0ebe2;
-            border: 1px solid #e8dfd6;
-            border-radius: 4px;
-            cursor: pointer;
-            color: #6b6359;
-            font-size: 12px;
-            font-weight: 500;
-        }
-
-        .btn-add-phone:hover {
-            background: #e8dfd6;
-        }
-
-        /* Buttons */
-        .btn-group {
-            display: flex;
-            gap: 8px;
-            margin-top: 20px;
-        }
-
-        .btn {
-            padding: 10px 16px;
-            border: none;
-            border-radius: 6px;
-            cursor: pointer;
-            font-size: 14px;
-            font-weight: 500;
-            transition: all 0.2s ease;
-        }
-
-        .btn-primary {
-            background: #d9cdbf;
-            color: #5a5450;
-            border: 1px solid #c9bfb0;
-        }
-
-        .btn-primary:hover {
-            background: #c9bfb0;
-        }
-
-        .btn-secondary {
-            background: #f0ebe2;
-            color: #6b6359;
-            border: 1px solid #e8dfd6;
-        }
-
-        .btn-secondary:hover {
-            background: #e8dfd6;
-        }
-
-        .btn-danger {
-            background: #f5e8e8;
-            color: #8b5a5a;
-            border: 1px solid #e8d9d9;
-        }
-
-        .btn-danger:hover {
-            background: #e8d9d9;
-        }
-
-        /* Alerts */
-        .alert {
-            padding: 12px 16px;
-            border-radius: 6px;
-            font-size: 13px;
-            margin-bottom: 16px;
-            display: none;
-        }
-
-        .alert.show {
-            display: block;
-        }
-
-        .alert-success {
-            background: #e8f5e9;
-            color: #2e7d32;
-            border: 1px solid #c8e6c9;
-        }
-
-        .alert-error {
-            background: #ffebee;
-            color: #c62828;
-            border: 1px solid #ef9a9a;
-        }
-
-        .alert-info {
-            background: #e3f2fd;
-            color: #1565c0;
-            border: 1px solid #bbdefb;
-        }
-
-        /* Loading state */
-        .loading {
-            opacity: 0.6;
-            pointer-events: none;
-        }
-
-        .empty-state {
-            text-align: center;
-            padding: 40px;
-            color: #9b9389;
-        }
-
-        .empty-state h2 {
-            font-size: 16px;
-            color: #6b6359;
-            margin-bottom: 8px;
-        }
-
-        /* Responsive */
         @media (max-width: 768px) {
-            .container {
-                flex-direction: column;
-            }
             .sidebar {
                 width: 100%;
-                border-right: none;
-                border-bottom: 1px solid #e8dfd6;
+                height: auto;
+                position: static;
             }
-            .personas-list {
-                flex-direction: row;
-                margin-bottom: 12px;
+
+            body {
+                margin-left: 0;
             }
-            .content-area {
-                padding: 16px;
+
+            .row {
+                grid-template-columns: 1fr;
+            }
+
+            header h1 {
+                font-size: 24px;
+            }
+
+            .form-container {
+                padding: 20px;
             }
         }
     </style>
 </head>
 <body>
+    <!-- Sidebar Navigation -->
+    <div class="sidebar">
+        <div class="sidebar-header">📋 Personas</div>
+        <div class="personas-list" id="personasList"></div>
+        <div class="personas-actions">
+            <button class="btn-new-persona" onclick="createNewPersona()">+ New Persona</button>
+        </div>
+    </div>
+
     <div class="container">
-        <!-- Sidebar -->
-        <div class="sidebar">
-            <div class="sidebar-header">📝 Personas</div>
-            <div class="personas-list" id="personasList"></div>
-            <div class="sidebar-actions">
-                <button class="btn-small primary" onclick="showNewPersonaModal()">+ New</button>
-                <button class="btn-small danger" onclick="deleteCurrentPersona()">Delete</button>
-            </div>
-        </div>
+        <header>
+            <h1>🎯 Indieclaw Persona Configuration</h1>
+            <p>Customize your AI assistant's personality, prompts, and settings</p>
+        </header>
 
-        <!-- Main Content -->
-        <div class="main-content">
-            <div class="header">
-                <h1 id="personaName">Select a Persona</h1>
-                <p id="personaInfo"></p>
-            </div>
-            <div class="content-area" id="contentArea">
-                <div class="empty-state">
-                    <h2>No Persona Selected</h2>
-                    <p>Select a persona from the sidebar or create a new one to get started.</p>
-                </div>
-            </div>
-        </div>
-    </div>
+        <div class="form-container">
+            <form id="personaForm">
+                <!-- Persona Info Section -->
+                <div class="form-section">
+                    <div class="section-title" data-icon="📝">Basic Information</div>
 
-    <!-- Modal for creating new persona -->
-    <div id="newPersonaModal" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.3); z-index: 1000; display: flex; align-items: center; justify-content: center;">
-        <div style="background: white; padding: 24px; border-radius: 8px; width: 90%; max-width: 400px; box-shadow: 0 4px 12px rgba(0,0,0,0.15);">
-            <h2 style="color: #6b6359; margin-bottom: 16px;">Create New Persona</h2>
-            <div class="form-group">
-                <label>Persona Name</label>
-                <input type="text" id="newPersonaName" placeholder="e.g., my_coach" />
-            </div>
-            <div style="display: flex; gap: 8px; margin-top: 24px;">
-                <button class="btn btn-primary" onclick="createNewPersona()">Create</button>
-                <button class="btn btn-secondary" onclick="closeNewPersonaModal()">Cancel</button>
-            </div>
-        </div>
-    </div>
-
-    <script>
-        let currentPersona = null;
-        let personas = [];
-
-        async function loadPersonas() {
-            try {
-                const response = await fetch('/api/personas');
-                const data = await response.json();
-                if (data.success) {
-                    personas = data.personas;
-                    renderPersonasList();
-                }
-            } catch (error) {
-                showAlert(`Error loading personas: ${error.message}`, 'error');
-            }
-        }
-
-        function renderPersonasList() {
-            const list = document.getElementById('personasList');
-            list.innerHTML = personas
-                .map(name => `<div class="persona-item ${name === currentPersona ? 'active' : ''}" onclick="selectPersona('${name}')">${name}</div>`)
-                .join('');
-        }
-
-        async function selectPersona(name) {
-            try {
-                const response = await fetch(`/api/personas/${name}`);
-                const data = await response.json();
-                if (data.success) {
-                    currentPersona = name;
-                    renderPersonasList();
-                    showPersonaEditor(name, data.content);
-                }
-            } catch (error) {
-                showAlert(`Error loading persona: ${error.message}`, 'error');
-            }
-        }
-
-        function showPersonaEditor(name, content) {
-            const header = document.getElementById('personaName');
-            const info = document.getElementById('personaInfo');
-            const contentArea = document.getElementById('contentArea');
-
-            header.textContent = name;
-            info.textContent = `Editing persona configuration`;
-
-            contentArea.innerHTML = `
-                <div class="section">
-                    <div class="section-title">Configuration</div>
-                    <div class="alert" id="validationAlert"></div>
                     <div class="form-group">
-                        <label>TOML Content</label>
-                        <textarea id="tomlContent" placeholder="Enter TOML configuration...">${escapeHtml(content)}</textarea>
+                        <label>Persona Name</label>
+                        <span class="help-text">Display name for this persona (e.g., "Executive Coach", "Tech Advisor")</span>
+                        <input type="text" id="personaName" placeholder="e.g., Executive Coach Pro" required>
                     </div>
-                    <div class="btn-group">
-                        <button class="btn btn-primary" onclick="savePersona()">💾 Save</button>
-                        <button class="btn btn-secondary" onclick="validateToml()">✓ Validate</button>
-                    </div>
-                </div>
-                <div class="section" style="margin-top: 24px;">
-                    <div class="section-title">Quick Info</div>
-                    <div style="background: #faf7f2; padding: 12px; border-radius: 6px; font-size: 13px; color: #6b6359; line-height: 1.6;">
-                        <p>• Edit the TOML configuration directly</p>
-                        <p>• Click "Validate" to check syntax</p>
-                        <p>• Click "Save" to apply changes</p>
-                        <p>• Changes take effect after restart</p>
+
+                    <div class="form-group">
+                        <label>Version</label>
+                        <span class="help-text">Version number for tracking changes</span>
+                        <input type="text" id="personaVersion" placeholder="1.0" required>
                     </div>
                 </div>
-            `;
-        }
 
-        async function savePersona() {
-            const content = document.getElementById('tomlContent').value;
-            if (!content.trim()) {
-                showAlert('Content cannot be empty', 'error');
-                return;
-            }
+                <!-- Models Section -->
+                <div class="form-section">
+                    <div class="section-title" data-icon="🤖">AI Models</div>
 
-            try {
-                const response = await fetch(`/api/personas/${currentPersona}`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ content }),
-                });
-                const data = await response.json();
-                if (data.success) {
-                    showAlert(`✓ Persona "${currentPersona}" saved successfully`, 'success');
-                } else {
-                    showAlert(`Error: ${data.error}`, 'error');
-                }
-            } catch (error) {
-                showAlert(`Error saving persona: ${error.message}`, 'error');
-            }
-        }
-
-        async function validateToml() {
-            const content = document.getElementById('tomlContent').value;
-            if (!content.trim()) {
-                showAlert('Content cannot be empty', 'error');
-                return;
-            }
-
-            try {
-                const response = await fetch(`/api/personas/${currentPersona}/validate`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ content }),
-                });
-                const data = await response.json();
-                if (data.success) {
-                    showAlert('✓ Valid TOML syntax', 'success', 'validationAlert');
-                } else {
-                    showAlert(`Invalid TOML: ${data.error}`, 'error', 'validationAlert');
-                }
-            } catch (error) {
-                showAlert(`Validation error: ${error.message}`, 'error', 'validationAlert');
-            }
-        }
-
-        function showNewPersonaModal() {
-            document.getElementById('newPersonaModal').style.display = 'flex';
-            document.getElementById('newPersonaName').focus();
-        }
-
-        function closeNewPersonaModal() {
-            document.getElementById('newPersonaModal').style.display = 'none';
-        }
-
-        async function createNewPersona() {
-            const name = document.getElementById('newPersonaName').value.trim();
-            if (!name) {
-                showAlert('Persona name is required', 'error');
-                return;
-            }
-
-            if (personas.includes(name)) {
-                showAlert('Persona already exists', 'error');
-                return;
-            }
-
-            const defaultContent = `[persona]
-name = "${name}"
-version = "1.0"
-
-[models]
-text_model = "qwen3:8b"
-vision_model = "gemma4:e2b"
-
-[personality]
-prompt_template = """Your prompt here..."""
-tone = "professional"
-response_style = "detailed"
-
-[whatsapp]
-allowed_phone_numbers = []
-enabled = true
-`;
-
-            try {
-                const response = await fetch(`/api/personas/${name}`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ content: defaultContent }),
-                });
-                const data = await response.json();
-                if (data.success) {
-                    closeNewPersonaModal();
-                    await loadPersonas();
-                    await selectPersona(name);
-                    showAlert(`✓ Persona "${name}" created`, 'success');
-                } else {
-                    showAlert(`Error: ${data.error}`, 'error');
-                }
-            } catch (error) {
-                showAlert(`Error creating persona: ${error.message}`, 'error');
-            }
-        }
-
-        async function deleteCurrentPersona() {
-            if (!currentPersona) {
-                showAlert('No persona selected', 'error');
-                return;
-            }
-
-            if (currentPersona === 'default') {
-                showAlert('Cannot delete the default persona', 'error');
-                return;
-            }
-
-            if (!confirm(`Delete persona "${currentPersona}"? This action cannot be undone.`)) {
-                return;
-            }
-
-            try {
-                const response = await fetch(`/api/personas/${currentPersona}`, {
-                    method: 'DELETE',
-                });
-                const data = await response.json();
-                if (data.success) {
-                    currentPersona = null;
-                    await loadPersonas();
-                    document.getElementById('contentArea').innerHTML = `
-                        <div class="empty-state">
-                            <h2>Persona Deleted</h2>
-                            <p>Select another persona from the sidebar.</p>
+                    <div class="row">
+                        <div class="form-group">
+                            <label>Text Model</label>
+                            <span class="help-text">LLM for text responses and planning</span>
+                            <input type="text" id="textModel" placeholder="e.g., qwen3:8b" required>
                         </div>
-                    `;
-                    showAlert(`✓ Persona deleted`, 'success');
-                } else {
-                    showAlert(`Error: ${data.error}`, 'error');
-                }
-            } catch (error) {
-                showAlert(`Error deleting persona: ${error.message}`, 'error');
-            }
-        }
 
-        function showAlert(message, type, elementId = null) {
-            const alertEl = elementId ?
-                document.getElementById(elementId) :
-                document.querySelector('.alert.show') || createAlert();
+                        <div class="form-group">
+                            <label>Vision Model</label>
+                            <span class="help-text">LLM for analyzing images</span>
+                            <input type="text" id="visionModel" placeholder="e.g., gemma4:e2b" required>
+                        </div>
+                    </div>
+                </div>
 
-            alertEl.className = `alert alert-${type} show`;
-            alertEl.textContent = message;
+                <!-- Personality Section -->
+                <div class="form-section">
+                    <div class="section-title" data-icon="💬">Personality & Prompts</div>
 
-            if (!elementId) {
-                document.querySelector('.content-area').prepend(alertEl);
-            }
+                    <div class="form-group">
+                        <label>Main Prompt Template</label>
+                        <span class="help-text">System prompt that defines your assistant's core personality and behavior</span>
+                        <textarea id="promptTemplate" placeholder="You are an elite executive coach..." required></textarea>
+                    </div>
 
-            setTimeout(() => {
-                alertEl.classList.remove('show');
-            }, 5000);
-        }
+                    <div class="form-group">
+                        <label>Planner Prompt</label>
+                        <span class="help-text">Prompt for evaluating if a question is within your expertise scope</span>
+                        <textarea id="plannerPrompt" placeholder="You are a STRICT feasibility analyzer..." required></textarea>
+                    </div>
 
-        function createAlert() {
-            const alert = document.createElement('div');
-            alert.className = 'alert';
-            return alert;
-        }
+                    <div class="row">
+                        <div class="form-group">
+                            <label>Tone</label>
+                            <span class="help-text">Communication style (e.g., professional, friendly, coaching)</span>
+                            <input type="text" id="tone" placeholder="e.g., coaching" required>
+                        </div>
 
-        function escapeHtml(text) {
-            const map = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' };
-            return text.replace(/[&<>"']/g, m => map[m]);
-        }
+                        <div class="form-group">
+                            <label>Max Response Length</label>
+                            <span class="help-text">Maximum characters for responses</span>
+                            <input type="number" id="maxResponseLength" placeholder="1500" required>
+                        </div>
+                    </div>
 
-        // Close modal on outside click
-        document.getElementById('newPersonaModal').addEventListener('click', (e) => {
-            if (e.target.id === 'newPersonaModal') {
-                closeNewPersonaModal();
-            }
-        });
+                    <div class="row">
+                        <div class="form-group">
+                            <label>Response Style</label>
+                            <span class="help-text">How to format responses (e.g., strategic_guidance, conversational)</span>
+                            <input type="text" id="responseStyle" placeholder="strategic_guidance" required>
+                        </div>
 
-        // Initialize
-        loadPersonas();
-    </script>
+                        <div class="form-group">
+                            <label>Include Follow-up Questions</label>
+                            <span class="help-text">Whether to ask follow-up questions in responses</span>
+                            <div class="checkbox-group">
+                                <label>
+                                    <input type="checkbox" id="includeFollowup">
+                                    <span>Yes, include follow-ups</span>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Tone Guidelines Section -->
+                <div class="form-section">
+                    <div class="section-title" data-icon="🎭">Tone Guidelines</div>
+
+                    <div class="form-group">
+                        <label>Empathy</label>
+                        <span class="help-text">How to show understanding and emotional intelligence</span>
+                        <input type="text" id="toneEmpathy" placeholder="Show genuine understanding...">
+                    </div>
+
+                    <div class="form-group">
+                        <label>Accountability</label>
+                        <span class="help-text">How to hold users accountable to their goals</span>
+                        <input type="text" id="toneAccountability" placeholder="Hold clients accountable...">
+                    </div>
+
+                    <div class="form-group">
+                        <label>Clarity</label>
+                        <span class="help-text">How to explain complex concepts</span>
+                        <input type="text" id="toneClarity" placeholder="Explain complex strategies...">
+                    </div>
+
+                    <div class="form-group">
+                        <label>Confidence</label>
+                        <span class="help-text">How confident and authoritative to sound</span>
+                        <input type="text" id="toneConfidence" placeholder="Project confidence...">
+                    </div>
+
+                    <div class="form-group">
+                        <label>Curiosity</label>
+                        <span class="help-text">How to encourage deeper exploration</span>
+                        <input type="text" id="toneCuriosity" placeholder="Ask questions that reveal...">
+                    </div>
+                </div>
+
+                <!-- WhatsApp Section -->
+                <div class="form-section">
+                    <div class="section-title" data-icon="💬">WhatsApp Access Control</div>
+
+                    <div class="form-group">
+                        <label>Allowed Phone Numbers</label>
+                        <span class="help-text">Only these phone numbers can message your assistant (format: 91-XXXXXXXXXX)</span>
+                        <div class="phone-list" id="phoneList"></div>
+                        <div class="add-phone-group">
+                            <input type="text" id="newPhoneNumber" placeholder="91-98765-43210">
+                            <button type="button" onclick="addPhoneNumber()">+ Add</button>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Enable WhatsApp</label>
+                        <span class="help-text">Whether this persona is active on WhatsApp</span>
+                        <div class="checkbox-group">
+                            <label>
+                                <input type="checkbox" id="whatsappEnabled">
+                                <span>Enabled</span>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Action Buttons -->
+                <div class="button-group">
+                    <button type="button" class="btn-reset" onclick="resetForm()">Reset</button>
+                    <button type="submit" class="btn-save" id="saveBtn">Save Changes</button>
+                </div>
+
+                <div class="message" id="message"></div>
+            </form>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
 </body>
 </html>

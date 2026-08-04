@@ -1,156 +1,238 @@
-# Personas Configuration
+# Indieclaw Persona Configuration
 
-This directory contains TOML configuration files that define different AI assistant personas. Each persona file specifies:
-
-- **Prompt Template**: The system prompt that defines the AI's behavior and personality
-- **LLM Models**: Which models to use for text and vision tasks
-- **Tone & Style**: Guidelines for how the AI should communicate
-- **WhatsApp Access Control**: Which phone numbers are allowed to interact via WhatsApp
+This directory contains persona definitions for Indieclaw. Each persona is a TOML file that defines how the assistant should behave for a specific use case.
 
 ## Quick Start
 
-### Using a Persona
+To add a new persona:
+1. Copy `generic_assistant.toml` as a template
+2. Edit the persona name, description, and intents
+3. Add it to the personas directory
+4. Load it with `PERSONA_NAME=your_persona_name`
 
-Set the `PERSONA_NAME` environment variable before starting the orchestrator:
+## TOML Schema
+
+### Top-Level Fields
+
+```toml
+name = "Executive Coach"              # Display name
+version = 1                            # Semantic version (starts at 1)
+description = "..."                    # What this persona does
+text_model = "qwen2:7b"               # LLM for text generation
+vision_model = "llava:7b"             # LLM for image understanding
+```
+
+### Capabilities Section
+
+Defines what the persona can and cannot handle:
+
+```toml
+[capabilities]
+can_handle = [
+    "career_decisions",
+    "leadership_challenges",
+    # ... topics this persona handles
+]
+
+cannot_handle = [
+    "mental_health_crisis",
+    # ... topics that should be escalated
+]
+
+requires_search = [
+    "market_data",
+    # ... topics that need web search
+]
+
+internal_only = [
+    "reflection_questions",
+    # ... topics that need only reasoning
+]
+```
+
+### Intents Section
+
+Each intent is a classification category for user messages. Define one intent per section:
+
+```toml
+[intents.career_decision]
+mode = "inquiry"                    # Response mode: inquiry, exploration, reframing, redirect, etc.
+depth = "deep"                      # Coaching depth: deep, medium, light
+search_enabled = false              # Use web search for this intent?
+confidence_min = 0.6                # Minimum confidence to proceed (0-1)
+probe_questions = 3                 # Number of follow-up questions to ask
+template = "career_inquiry"         # Response template key to use
+```
+
+**Available Modes:**
+- `inquiry` - Ask questions to understand the situation
+- `exploration` - Explore different perspectives
+- `reframing` - Help see things from a new angle
+- `decision` - Guide decision-making
+- `research` - Provide information/research
+- `redirect` - Redirect to coaching
+- `referral` - Escalate to appropriate service
+- `education` - Teach/explain
+- `clarify` - Ask for clarification
+
+### Response Rules Section
+
+Define how responses should be formatted for each mode:
+
+```toml
+[response_rules.inquiry]
+mode = "inquiry"
+questions_ratio = 0.60              # 0-1: proportion of response that should be questions
+reflection_ratio = 0.30             # 0-1: proportion that should be reflections
+advice_ratio = 0.10                 # 0-1: proportion that should be advice
+silence_ratio = 0.0                 # 0-1: proportion of silence (for thinking)
+max_length = 300                    # Maximum characters
+tone = "curious"                    # Tone: curious, warm, professional, insightful, etc.
+forbidden_patterns = [              # Phrases to avoid
+    "you should",
+    "I recommend"
+]
+required_elements = [               # Elements that must be present
+    "question"
+]
+```
+
+**Important:** All ratio fields must sum to 1.0 (allowing small floating-point error).
+
+### Validation Gates Section
+
+Define rules that responses must pass:
+
+```toml
+[[validation_gates]]
+name = "max_questions_limit"
+gate_type = "length_check"          # Type: has_element, ratio_check, length_check, pattern_check
+parameters = { max_length = 350 }
+error_message = "Response too long"
+is_critical = true                  # If true, fail on violation; if false, warn only
+```
+
+**Gate Types:**
+- `has_element` - Check if response contains required element
+- `ratio_check` - Validate response follows defined ratios
+- `length_check` - Validate response length
+- `pattern_check` - Check for forbidden patterns
+- `confidence_check` - Validate confidence threshold
+
+### Templates Section
+
+Define response templates that can be used:
+
+```toml
+[templates]
+career_inquiry = "Tell me more about what's drawing you toward this direction. What would success look like to you?"
+```
+
+Templates can include placeholders: `{{variable_name}}`
+
+## Complete Example
+
+See `executive_coach.toml` for a complete production example.
+
+## Loading a Persona
+
+Set the `PERSONA_NAME` environment variable:
 
 ```bash
 export PERSONA_NAME=executive_coach
-./gateway-service/cmd/orchestrator/main
+./start-orchestrator.sh
 ```
 
-If not specified, it defaults to `default.toml`.
+Or pass it inline:
 
-## File Format
-
-Each persona TOML file has this structure:
-
-```toml
-[persona]
-name = "Persona Name"
-version = "1.0"
-
-[models]
-text_model = "qwen3:8b"
-vision_model = "gemma4:e2b"
-
-[personality]
-prompt_template = """Your system prompt here..."""
-tone = "professional"
-max_response_length = 1000
-response_style = "detailed"
-include_followup_questions = false
-
-[personality.tone_guidelines]
-clarity = "Description of tone guideline"
-accuracy = "Another guideline"
-
-[whatsapp]
-allowed_phone_numbers = [
-    "91-98765-43210",
-    "91-87654-32109",
-]
-enabled = true
+```bash
+PERSONA_NAME=executive_coach go run ./cmd/orchestrator/main.go
 ```
 
-## Creating a New Persona
+## Multiple Personas
 
-1. **Copy an existing persona** as a template:
-   ```bash
-   cp default.toml my_new_persona.toml
-   ```
+You can have multiple persona files. Indieclaw supports:
+- **Runtime selection** via `PERSONA_NAME` env var
+- **API endpoint** `/personas` to list available personas
+- **API endpoint** `/personas/{name}` to get persona details
+- **Switching** without restarting (coming soon)
 
-2. **Edit the configuration** to customize:
-   - Persona name and description
-   - System prompt template
-   - Tone and communication style
-   - Allowed WhatsApp phone numbers
+## Best Practices
 
-3. **Test it**:
-   ```bash
-   export PERSONA_NAME=my_new_persona
-   # Start orchestrator and test via WhatsApp
-   ```
+### 1. Start with a Copy
+Always copy an existing persona as a template rather than starting from scratch.
 
-## Prompt Template Guidelines
+### 2. Define Intents Clearly
+Each intent should map to a specific user behavior or question type. Avoid overlapping intents.
 
-Your `prompt_template` can include placeholders that will be automatically filled:
+### 3. Be Strict with Confidence
+Set `confidence_min` high (0.7+) if this is a specialized persona. Lower confidence (0.4-0.5) for general personas.
 
-- `%s` (first): Replaced with the list of available tools
-- `%s` (second): Replaced with tool names for the Action field
+### 4. Use Validation Gates
+Define what makes a "good" response for your persona. Don't skip this.
 
-Example:
-```toml
-prompt_template = """You are a helpful assistant.
-
-Available tools:
-%s
-
-When using tools, respond with:
-Thought: [reasoning]
-Action: [tool name from: %s]
-Action Input: [parameters]
-Observation: [result]
-Final Answer: [your response]
-"""
+### 5. Test the Persona
+Before deploying:
+```bash
+# Test by sending messages via WhatsApp
+# Check logs to see intent classification and confidence
+# Verify responses match expected tone and structure
 ```
-
-## Model Selection
-
-Supported models depend on what's available in your Ollama instance:
-
-- **Text Models**: `qwen3:8b`, `neural-chat:latest`, `mistral:latest`, etc.
-- **Vision Models**: `gemma4:e2b`, `llava:latest`, etc.
-
-Check available models: `ollama list`
-
-## WhatsApp Phone Numbers
-
-Format phone numbers in international format, e.g.:
-- India: `91-98765-43210`
-- US: `1-202-555-0173`
-- UK: `44-20-1234-5678`
-
-Numbers can use separators (`-`, spaces, parentheses) - they're normalized during validation.
-
-## Examples
-
-### default.toml
-Standard general-purpose assistant. Safe for most use cases.
-
-### executive_coach.toml
-Specialized persona for an executive coach providing strategic guidance to clients.
-Includes professional tone, actionable insights, and followup questions.
-
-## Environment Variables
-
-- `PERSONA_NAME`: Which persona TOML file to load (default: "default")
-- `TEXT_MODEL`: Override persona's text model (optional)
-- `VISION_MODEL`: Override persona's vision model (optional)
 
 ## Troubleshooting
 
-**Persona file not found:**
+### Persona Not Loading
 ```
-persona file not found for "my_persona" (tried: [...])
+Error: failed to load persona "my_coach": no such file or directory
 ```
-Ensure the TOML file exists and is in `gateway-service/config/personas/`
+→ Check the filename is lowercase and ends with `.toml`
 
-**Invalid TOML syntax:**
+### Validation Errors
 ```
-failed to parse persona TOML: ...
+Error: invalid persona configuration: intents missing required field
 ```
-Check your TOML file syntax. Use https://www.toml-lint.com/ to validate.
+→ Check TOML syntax (use a TOML validator)
+→ Verify all required fields are present
 
-**Phone number not authorized:**
-```
-❌ Phone number is NOT in the allowed list
-```
-Add the number to the persona's `[whatsapp] allowed_phone_numbers` list.
+### Intent Misclassification
+If the persona is routing to wrong intents:
+- Check confidence scores in logs
+- Verify intent descriptions are distinct
+- Add more context to intent templates
 
-## Future Enhancements
+## Schema Validation
 
-Planned features:
-- CLI tool to manage personas: `indieclaw persona create`, `edit`, `list`
-- Web UI dashboard for persona management
-- Hot-reload personas without restarting
-- Per-session persona switching
+To validate a persona TOML file:
+
+```bash
+cd gateway-service
+go run ./cmd/orchestrator/main.go --validate-persona config/personas/my_persona.toml
+```
+
+(This feature coming soon)
+
+## Adding Custom Intent Types
+
+To add new intent types (e.g., "negotiation", "conflict_resolution"):
+
+1. Add to the persona TOML:
+```toml
+[intents.negotiation]
+mode = "collaboration"
+# ...
+```
+
+2. Ensure the mode is defined in response_rules
+3. Optionally add validation gates for that mode
+4. Test with real examples
+
+## Extending the System
+
+The persona configuration system is designed to be extended. Future enhancements:
+- **Conditional routing** - Route based on conversation context
+- **Multi-layer composition** - Stack personas (e.g., "coach + empathy layer")
+- **A/B testing** - Swap persona versions without code changes
+- **Custom rule types** - Define domain-specific rules
+- **Hot reloading** - Swap personas without restart
+
+For now, personas are static after startup but can be versioned (e.g., `executive_coach_v1`, `executive_coach_v2`).

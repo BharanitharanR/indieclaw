@@ -20,6 +20,7 @@ func NewLLMResultCoalator(llm llms.Model) *LLMResultCoalator {
 	}
 }
 
+// Coalesce synthesizes step results using persona-aware formatting
 func (rc *LLMResultCoalator) Coalesce(ctx context.Context, steps []StepResult, persona *PersonaConfig) (string, error) {
 	if len(steps) == 0 {
 		return "", fmt.Errorf("no step results to coalesce")
@@ -40,6 +41,129 @@ func (rc *LLMResultCoalator) Coalesce(ctx context.Context, steps []StepResult, p
 	finalResponse := rc.applyPersonaStyle(response, persona)
 
 	return finalResponse, nil
+}
+
+// CoalesceWithDefinition uses the new PersonaDefinition type
+func (rc *LLMResultCoalator) CoalesceWithDefinition(ctx context.Context, steps []StepResult, personaDef *PersonaDefinition, mode string) (string, error) {
+	if len(steps) == 0 {
+		return "", fmt.Errorf("no step results to coalesce")
+	}
+
+	log.Printf("[7/7] 🔗 RESULT COALATION")
+	log.Printf("    Persona: %s | Mode: %s | Steps: %d", personaDef.Name, mode, len(steps))
+
+	// Build synthesis prompt
+	prompt := rc.buildSynthesisPromptNew(steps, personaDef, mode)
+
+	response, err := llms.GenerateFromSinglePrompt(ctx, rc.llm, prompt)
+	if err != nil {
+		log.Printf("    ❌ Synthesis failed: %v", err)
+		return "", err
+	}
+
+	log.Printf("    ✅ Response generated (%d chars)", len(response))
+
+	// Apply persona-specific formatting
+	finalResponse := rc.applyPersonaFormatting(response, personaDef, mode)
+
+	return finalResponse, nil
+}
+
+// buildSynthesisPromptNew creates persona-aware synthesis prompt
+func (rc *LLMResultCoalator) buildSynthesisPromptNew(steps []StepResult, personaDef *PersonaDefinition, mode string) string {
+	var builder strings.Builder
+
+	// Get response rule for this mode
+	responseRule := personaDef.ResponseRules[mode]
+
+	builder.WriteString(fmt.Sprintf("You are a %s assistant (v%d).\n\n", personaDef.Name, personaDef.Version))
+
+	builder.WriteString("Your communication style:\n")
+	builder.WriteString(fmt.Sprintf("- Tone: %s\n", responseRule.Tone))
+	builder.WriteString(fmt.Sprintf("- Response ratios: Questions=%d%% | Reflection=%d%% | Advice=%d%% | Silence=%d%%\n",
+		int(responseRule.QuestionsRatio*100),
+		int(responseRule.ReflectionRatio*100),
+		int(responseRule.AdviceRatio*100),
+		int(responseRule.SilenceRatio*100),
+	))
+
+	builder.WriteString("\nStep Results to Synthesize:\n")
+	builder.WriteString("==========================\n")
+
+	for i, step := range steps {
+		builder.WriteString(fmt.Sprintf("\nStep %d:\n", i+1))
+
+		if step.Success {
+			builder.WriteString(fmt.Sprintf("✓ %s\n", step.Result))
+			if len(step.InternetData) > 0 {
+				builder.WriteString(fmt.Sprintf("  (with %d sources)\n", len(step.InternetData)))
+			}
+		} else {
+			builder.WriteString(fmt.Sprintf("✗ Failed: %s\n", step.Error))
+		}
+	}
+
+	builder.WriteString("\n==========================\n\n")
+
+	builder.WriteString("Requirements:\n")
+	builder.WriteString(fmt.Sprintf("1. Maximum length: %d characters\n", responseRule.MaxLength))
+	builder.WriteString(fmt.Sprintf("2. Keep tone: %s\n", responseRule.Tone))
+
+	if responseRule.QuestionsRatio > 0.3 {
+		builder.WriteString("3. Include thoughtful questions to guide thinking\n")
+	}
+	if responseRule.ReflectionRatio > 0.2 {
+		builder.WriteString("4. Reflect back what you're hearing\n")
+	}
+	if len(responseRule.ForbiddenPatterns) > 0 {
+		builder.WriteString(fmt.Sprintf("5. AVOID these patterns: %s\n", strings.Join(responseRule.ForbiddenPatterns, ", ")))
+	}
+
+	builder.WriteString("\nCreate a natural, flowing response that synthesizes all information above.\n")
+
+	return builder.String()
+}
+
+// applyPersonaFormatting applies persona-specific response formatting
+func (rc *LLMResultCoalator) applyPersonaFormatting(response string, personaDef *PersonaDefinition, mode string) string {
+	result := response
+
+	responseRule, ok := personaDef.ResponseRules[mode]
+	if !ok {
+		log.Printf("    ⚠️  No response rule for mode %q, using defaults", mode)
+		return result
+	}
+
+	// Trim to max length
+	if responseRule.MaxLength > 0 && len(result) > responseRule.MaxLength {
+		log.Printf("    📏 Trimming from %d to %d chars", len(result), responseRule.MaxLength)
+		result = result[:responseRule.MaxLength]
+
+		// Try to cut at word boundary
+		lastSpace := strings.LastIndex(result, " ")
+		if lastSpace > 0 && lastSpace > responseRule.MaxLength-50 {
+			result = result[:lastSpace]
+		}
+		if !strings.HasSuffix(result, "?") && !strings.HasSuffix(result, ".") {
+			result = result + "..."
+		}
+	}
+
+	// Validate against forbidden patterns
+	for _, pattern := range responseRule.ForbiddenPatterns {
+		if strings.Contains(strings.ToLower(result), strings.ToLower(pattern)) {
+			log.Printf("    ⚠️  Response contains forbidden pattern: %q", pattern)
+		}
+	}
+
+	// Ensure required elements are present
+	for _, required := range responseRule.RequiredElements {
+		if !strings.Contains(strings.ToLower(result), strings.ToLower(required)) {
+			log.Printf("    ⚠️  Response missing required element: %q", required)
+		}
+	}
+
+	return result
 }
 
 func (rc *LLMResultCoalator) buildSynthesisPrompt(steps []StepResult, persona *PersonaConfig) string {

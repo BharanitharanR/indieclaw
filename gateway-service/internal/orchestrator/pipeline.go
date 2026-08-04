@@ -18,12 +18,14 @@ type Pipeline struct {
 	stepExecutor     *LLMStepExecutor
 	resultCoalator   *LLMResultCoalator
 	responseFormatter *ResponseFormatter
+	visionLLM        llms.Model
 }
 
 func NewPipeline(
 	qdrantClient *qdrant.Client,
 	plannerLLM llms.Model,
 	mainLLM llms.Model,
+	visionLLM llms.Model,
 	embeddingModel string,
 ) *Pipeline {
 	searcher := NewSimpleInternetSearcher()
@@ -37,20 +39,28 @@ func NewPipeline(
 		stepExecutor:     NewLLMStepExecutor(mainLLM, searcher),
 		resultCoalator:   NewLLMResultCoalator(mainLLM),
 		responseFormatter: NewResponseFormatter("text"),
+		visionLLM:        visionLLM,
 	}
 }
 
-func (p *Pipeline) Execute(ctx context.Context, input string, sessionID string, persona *PersonaConfig) (string, error) {
+func (p *Pipeline) Execute(ctx context.Context, input string, sessionID string, persona *PersonaConfig, isVision bool, imageBase64 string) (string, error) {
 	pctx := &PipelineContext{
-		SessionID: sessionID,
-		UserInput: input,
-		Persona:   persona,
+		SessionID:   sessionID,
+		UserInput:   input,
+		IsVision:    isVision,
+		ImageBase64: imageBase64,
+		Persona:     persona,
 	}
 
 	log.Printf("\n=== PIPELINE START ===")
 	log.Printf("📥 Input: %s", input)
 	log.Printf("👤 Persona: %s", persona.Name)
 	log.Printf("🔑 Session: %s\n", sessionID)
+
+	// Handle vision/images if present
+	if err := p.handleVision(ctx, pctx); err != nil {
+		return "", p.handleError(pctx, "Vision Processing", err)
+	}
 
 	if err := p.stage1_RetrieveContext(ctx, pctx); err != nil {
 		return "", p.handleError(pctx, "Context Retrieval", err)
@@ -198,6 +208,37 @@ func (p *Pipeline) stage7_CoalesceResults(ctx context.Context, pctx *PipelineCon
 
 	pctx.FinalResponse = formatted
 	log.Printf("    ✅ Final response: %d chars\n", len(formatted))
+
+	return nil
+}
+
+func (p *Pipeline) handleVision(ctx context.Context, pctx *PipelineContext) error {
+	if !pctx.IsVision || pctx.ImageBase64 == "" {
+		return nil // No vision needed
+	}
+
+	log.Printf("👁️  Processing vision request: analyzing image")
+
+	// Create multimodal content for vision LLM
+	contentParts := []llms.ContentPart{
+		llms.TextPart("Analyze this image and provide a detailed description of what you see. Be specific about objects, people, text, actions, and any notable details."),
+		llms.ImageURLPart("data:image/jpeg;base64," + pctx.ImageBase64),
+	}
+
+	resp, err := p.visionLLM.GenerateContent(ctx, []llms.MessageContent{
+		{Role: llms.ChatMessageTypeHuman, Parts: contentParts},
+	})
+	if err != nil {
+		log.Printf("⚠️  Vision analysis failed: %v (continuing with text only)", err)
+		return nil // Non-fatal: continue with text
+	}
+
+	if len(resp.Choices) > 0 && resp.Choices[0].Content != "" {
+		imageDescription := resp.Choices[0].Content
+		log.Printf("✅ Image analyzed: %d chars of description", len(imageDescription))
+		// Prepend image description to the user input
+		pctx.UserInput = fmt.Sprintf("Image Analysis:\n%s\n\nUser Query:\n%s", imageDescription, pctx.UserInput)
+	}
 
 	return nil
 }
