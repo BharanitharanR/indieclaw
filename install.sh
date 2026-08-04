@@ -278,20 +278,35 @@ print_header "Step 12: Setting Up Environment"
 cat > "$INSTALL_PREFIX/indieclaw.env" << 'EOF'
 # Indieclaw Environment Configuration
 
-export PERSONA_NAME=executive_coach
+# Persona selection: generic_assistant | executive_coach | simple_qa | brainstorm_partner
+export PERSONA_NAME=generic_assistant
+
+# LLM Models
 export TEXT_MODEL=qwen2:7b
 export VISION_MODEL=llava:7b
 export EMBEDDING_MODEL=nomic-embed-text
+
+# Services
 export OLLAMA_HOST=http://localhost:11434
 export RABBITMQ_URL=amqp://indieclaw:secretpass@localhost:5672/
+
+# Logging
 export LOG_PATH=$HOME/.indieclaw/logs/orchestrator.log
+
+# WhatsApp Settings
 export TRIGGER_PREFIX=Self
 
-# Create logs directory
+# Persona Config Directory
+export PERSONA_CONFIG_DIR=$HOME/.indieclaw/config/personas
+
+# Create logs and config directories
 mkdir -p $HOME/.indieclaw/logs
+mkdir -p $HOME/.indieclaw/config/personas
 EOF
 
 print_success "Environment file created at $INSTALL_PREFIX/indieclaw.env"
+print_info "Available personas: generic_assistant, executive_coach, simple_qa, brainstorm_partner"
+print_info "Change persona: Edit PERSONA_NAME in $INSTALL_PREFIX/indieclaw.env"
 
 # ============= STARTUP SCRIPTS =============
 print_header "Step 13: Creating Startup Scripts"

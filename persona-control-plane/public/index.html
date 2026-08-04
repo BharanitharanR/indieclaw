@@ -428,16 +428,51 @@
                 <div class="form-section">
                     <div class="section-title" data-icon="📝">Basic Information</div>
 
+                    <div id="personaInfo" style="background: #f0f8ff; border-radius: 8px; padding: 16px; margin-bottom: 20px; border: 1px solid #b3e5fc;"></div>
+
                     <div class="form-group">
                         <label>Persona Name</label>
                         <span class="help-text">Display name for this persona (e.g., "Executive Coach", "Tech Advisor")</span>
-                        <input type="text" id="personaName" placeholder="e.g., Executive Coach Pro" required>
+                        <input type="text" id="personaName" placeholder="e.g., Executive Coach Pro" readonly>
                     </div>
 
                     <div class="form-group">
                         <label>Version</label>
                         <span class="help-text">Version number for tracking changes</span>
-                        <input type="text" id="personaVersion" placeholder="1.0" required>
+                        <input type="text" id="personaVersion" placeholder="1.0" readonly>
+                    </div>
+
+                    <div class="row">
+                        <div class="form-group">
+                            <label>Text Model</label>
+                            <span class="help-text">LLM for text responses</span>
+                            <input type="text" id="textModel" placeholder="e.g., qwen2:7b" readonly>
+                        </div>
+
+                        <div class="form-group">
+                            <label>Vision Model</label>
+                            <span class="help-text">LLM for image analysis</span>
+                            <input type="text" id="visionModel" placeholder="e.g., llava:7b" readonly>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Intents and Modes Section -->
+                <div class="form-section">
+                    <div class="section-title" data-icon="🎯">Persona Structure</div>
+                    <div id="intentsContainer" style="margin-bottom: 20px;"></div>
+                    <div id="responsesContainer" style="margin-bottom: 20px;"></div>
+                </div>
+
+                <!-- TOML Editor Section -->
+                <div class="form-section">
+                    <div class="section-title" data-icon="📄">TOML Configuration</div>
+                    <div class="form-group">
+                        <label>Raw TOML Content</label>
+                        <span class="help-text">Edit the TOML configuration directly. Changes will be validated against the schema.</span>
+                        <textarea id="tomlEditor" placeholder="[name]
+version = 1
+..." style="min-height: 400px; font-family: 'Monaco', 'Menlo', monospace;"></textarea>
                     </div>
                 </div>
 

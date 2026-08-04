@@ -133,6 +133,14 @@ async function handleIncomingMessage(msg) {
     // Reject group messages
     if (msg.from.includes("@g.us")) return;
 
+    let contact;
+    try {
+        contact = await msg.getContact();
+    } catch (err) {
+        console.warn(`⚠️  Could not retrieve contact info: ${err.message}`);
+        // Continue processing anyway - we have the phone number from msg.from
+    }
+
     // Extract phone number from sender JID (format: "919361315379@c.us" -> "919361315379")
     const senderPhone = msg.from.split('@')[0];
 

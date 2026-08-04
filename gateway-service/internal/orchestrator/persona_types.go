@@ -5,6 +5,7 @@ type PersonaDefinition struct {
 	Name            string                 `toml:"name"`
 	Version         int                    `toml:"version"`
 	Description     string                 `toml:"description"`
+	PlannerPrompt   string                 `toml:"planner_prompt"`
 	Capabilities    PersonaCapabilities    `toml:"capabilities"`
 	Intents         map[string]PersonaRule `toml:"intents"`
 	ResponseRules   map[string]ResponseRule `toml:"response_rules"`

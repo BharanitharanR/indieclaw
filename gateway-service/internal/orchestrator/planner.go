@@ -31,7 +31,10 @@ func (p *LLMPlanner) Plan(ctx context.Context, input string, context string, per
 	// Use persona's planner prompt if available, otherwise use default
 	plannerPromptTemplate := persona.PlannerPrompt
 	if plannerPromptTemplate == "" {
+		log.Printf("⚠️  Persona has no planner_prompt, using default")
 		plannerPromptTemplate = defaultPlannerPrompt()
+	} else {
+		log.Printf("✅ Using persona's custom planner_prompt (%d chars)", len(plannerPromptTemplate))
 	}
 
 	// Format with persona context

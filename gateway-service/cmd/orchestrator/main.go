@@ -56,10 +56,10 @@ func main() {
 		personaName = "generic_assistant"
 	}
 
-	personaDef, err := orchestrator.LoadPersona(personaName)
+	personaDef, err := orchestrator.LoadPersonaDefinition(personaName)
 	if err != nil {
 		log.Printf("⚠️  Failed to load persona %q, attempting fallback to generic_assistant: %v", personaName, err)
-		personaDef, err = orchestrator.LoadPersona("generic_assistant")
+		personaDef, err = orchestrator.LoadPersonaDefinition("generic_assistant")
 		if err != nil {
 			log.Fatalf("❌ Failed to load fallback persona: %v", err)
 		}
@@ -307,177 +307,6 @@ func (s *server) updateGraphContext(userID, sessionID, vectorID string) {
 	}
 }
 
-func (s *server) Chat(ctx context.Context, req *v1.ChatRequest) (*v1.ChatResponse, error) {
-	if len(req.Messages) == 0 {
-		return nil, fmt.Errorf("no messages provided")
-	}
-
-	lastMsg := req.GetMessages()[len(req.GetMessages())-1]
-	userMsg := lastMsg.GetContent()
-
-	userID := "default_user"
-
-	isVision := len(lastMsg.GetImages()) > 0
-	var imageData string
-	if isVision {
-		imageData = lastMsg.GetImages()[0]
-	}
-
-	sessionID, parentVectorID := s.lookupOrInitializeSession(ctx, userID, userMsg)
-
-	log.Printf("\n📨 CHAT REQUEST [Persona: %s]", s.persona.Name)
-	log.Printf("   User: %s | Session: %s | Vision: %v", userID, sessionID, isVision)
-
-	// Classify intent using persona executor
-	pctx := &orchestrator.PersonaContext{
-		Definition: s.persona,
-		Evidence:   map[string]interface{}{"message": userMsg},
-	}
-
-	intent, confidence := s.personaExecutor.ClassifyIntent(userMsg, pctx)
-	log.Printf("   Intent: %s (confidence: %.0f%%)", intent, confidence*100)
-
-	// Get response mode for this intent
-	rule := s.personaExecutor.GetModeForIntent(intent, s.persona)
-	log.Printf("   Mode: %s | Search: %v | Template: %s", rule.Mode, rule.SearchEnabled, rule.Template)
-
-	var result string
-	var err error
-	if s.toolRegistry != nil {
-		result, err = s.workflow.RunWithTools(ctx, sessionID, userMsg, isVision, imageData, s.toolRegistry)
-	} else {
-		result, err = s.workflow.Run(ctx, sessionID, userMsg, isVision, imageData)
-	}
-
-	if err != nil {
-		log.Printf("❌ Workflow error: %v", err)
-		return nil, err
-	}
-
-	// Validate response against persona rules
-	issues := s.personaExecutor.ValidateResponseAgainstRules(result, rule.Mode, s.persona)
-	if len(issues) > 0 {
-		log.Printf("⚠️  Response validation issues (%d):", len(issues))
-		for _, issue := range issues {
-			log.Printf("   - %s [%s]: %s", issue.Gate, issue.Severity, issue.Message)
-			if issue.Severity == "error" {
-				log.Printf("     Fix: %s", issue.Fix)
-			}
-		}
-	}
-
-	if s.qdrantClient != nil {
-		go func(uID, sessID, pVectorID, promptText, respText string) {
-			saveCtx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
-			defer cancel()
-
-			log.Printf("DEBUG: Async interaction vector indexing initiated for session: %s", sessID)
-
-			newVectorID, err := orchestrator.SaveInteractionToVectorDB(saveCtx, s.embeddingModel, s.qdrantClient, sessID, promptText, respText, pVectorID)
-			if err != nil {
-				log.Printf("ERROR: Failed to save interaction vector: %v", err)
-				return
-			}
-
-			s.updateGraphContext(uID, sessID, newVectorID)
-
-			log.Printf("✅ Success: Complete exchange for session %s indexed. Graph link updated.", sessID)
-		}(userID, sessionID, parentVectorID, userMsg, result)
-	}
-	log.Printf("result %s", result)
-
-	return &v1.ChatResponse{
-		Message: &v1.Message{
-			Role:    "assistant",
-			Content: result,
-			PersonaMetadata: &v1.PersonaMetadata{
-				PersonaName: s.persona.Name,
-				Intent:      intent,
-				Mode:        rule.Mode,
-				Confidence:  confidence,
-			},
-		},
-	}, nil
-}
-
-// GetPersona returns details about the current active persona
-func (s *server) GetPersona(ctx context.Context, req *v1.GetPersonaRequest) (*v1.PersonaResponse, error) {
-	if s.persona == nil {
-		return nil, fmt.Errorf("no persona loaded")
-	}
-
-	intentList := make([]*v1.IntentConfig, 0)
-	for name, rule := range s.persona.Intents {
-		intentList = append(intentList, &v1.IntentConfig{
-			Name:     name,
-			Mode:     rule.Mode,
-			Template: rule.Template,
-		})
-	}
-
-	canHandle := make([]string, len(s.persona.Capabilities.CanHandle))
-	copy(canHandle, s.persona.Capabilities.CanHandle)
-
-	cannotHandle := make([]string, len(s.persona.Capabilities.CannotHandle))
-	copy(cannotHandle, s.persona.Capabilities.CannotHandle)
-
-	return &v1.PersonaResponse{
-		Name:           s.persona.Name,
-		Version:        int32(s.persona.Version),
-		Description:    s.persona.Description,
-		CanHandle:      canHandle,
-		CannotHandle:   cannotHandle,
-		Intents:        intentList,
-		TextModel:      s.persona.TextModel,
-		VisionModel:    s.persona.VisionModel,
-	}, nil
-}
-
-// ListPersonas returns available personas
-func (s *server) ListPersonas(ctx context.Context, req *v1.ListPersonasRequest) (*v1.ListPersonasResponse, error) {
-	personas, err := orchestrator.ListAvailablePersonas()
-	if err != nil {
-		log.Printf("❌ Failed to list personas: %v", err)
-		return nil, fmt.Errorf("failed to list personas: %w", err)
-	}
-
-	var personalInfos []*v1.PersonaInfo
-	for _, name := range personas {
-		persona, err := orchestrator.LoadPersona(name)
-		if err != nil {
-			log.Printf("⚠️  Failed to load persona %q: %v", name, err)
-			continue
-		}
-
-		isActive := (name == s.persona.Name)
-		personalInfos = append(personalInfos, &v1.PersonaInfo{
-			Name:        persona.Name,
-			Version:     int32(persona.Version),
-			Description: persona.Description,
-			IsActive:    isActive,
-		})
-	}
-
-	return &v1.ListPersonasResponse{
-		Personas: personalInfos,
-	}, nil
-}
-
-func (s *server) ListMCPTools(ctx context.Context, req *v1.ListMCPToolsRequest) (*v1.ListMCPToolsResponse, error) {
-	mcpConfigPath := os.Getenv("MCP_CONFIG_PATH")
-	if mcpConfigPath == "" {
-		return &v1.ListMCPToolsResponse{ToolsByServer: make(map[string]*v1.ToolList)}, nil
-	}
-
-	_, _ = orchestrator.LoadMCPToolsFromConfig(ctx, mcpConfigPath)
-
-	return &v1.ListMCPToolsResponse{
-		ToolsByServer: make(map[string]*v1.ToolList),
-	}, nil
-}
-
-// ============= RABBITMQ INITIALIZATION =============
-
 func (s *server) initializeRabbitMQ() error {
 	rabbitmqURL := os.Getenv("RABBITMQ_URL")
 	if rabbitmqURL == "" {
@@ -604,13 +433,18 @@ func (s *server) consumeRequestQueue() {
 func (s *server) handleQueueRequest(req QueueRequest, delivery amqp.Delivery) {
 	startTime := time.Now()
 
-	// Get the loaded persona
-	persona := orchestrator.GetPersona()
-	if persona == nil {
+	// Use the persona loaded at startup (stored in s.persona)
+	if s.persona == nil {
 		log.Printf("❌ No persona loaded for request [%s]", req.CorrelationID)
 		s.publishErrorResponse(req, "No persona configured", startTime)
 		delivery.Ack(false)
 		return
+	}
+
+	// Convert PersonaDefinition to PersonaConfig for pipeline compatibility
+	persona := &orchestrator.PersonaConfig{
+		Name:          s.persona.Name,
+		PlannerPrompt: s.persona.PlannerPrompt,
 	}
 
 	// Determine if this is a vision request

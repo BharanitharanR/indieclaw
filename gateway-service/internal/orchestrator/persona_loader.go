@@ -29,8 +29,24 @@ func LoadPersonaDefinition(name string) (*PersonaDefinition, error) {
 	// Construct path to persona file
 	configDir := os.Getenv("PERSONA_CONFIG_DIR")
 	if configDir == "" {
-		// Default to gateway-service/config/personas
-		configDir = filepath.Join("gateway-service", "config", "personas")
+		// Try multiple possible locations
+		possibleDirs := []string{
+			"config/personas",                                    // When run from gateway-service
+			filepath.Join("gateway-service", "config", "personas"), // When run from root
+			filepath.Join("..", "..", "config", "personas"),      // Relative from internal/orchestrator
+		}
+
+		for _, dir := range possibleDirs {
+			if _, err := os.Stat(dir); err == nil {
+				configDir = dir
+				break
+			}
+		}
+
+		// If still not found, default to config/personas
+		if configDir == "" {
+			configDir = "config/personas"
+		}
 	}
 
 	personaFile := filepath.Join(configDir, name+".toml")
@@ -82,10 +98,16 @@ func GetCurrentPersonaDefinition() *PersonaDefinition {
 	return currentPersonaDefinition
 }
 
-// LoadPersona is a wrapper that tries to load PersonaDefinition first,
-// then falls back to PersonaConfig for backward compatibility
-func LoadPersona(name string) (*PersonaDefinition, error) {
-	return LoadPersonaDefinition(name)
+// GetPersonaAsConfig returns the current PersonaDefinition wrapped as a PersonaConfig for pipeline compatibility
+func GetPersonaAsConfig() *PersonaConfig {
+	def := GetCurrentPersonaDefinition()
+	if def == nil {
+		return nil
+	}
+	return &PersonaConfig{
+		Name:          def.Name,
+		PlannerPrompt: def.PlannerPrompt,
+	}
 }
 
 // ListAvailablePersonas lists all persona files in the config directory
@@ -132,7 +154,7 @@ func ValidatePersonaConfig(p *PersonaDefinition) error {
 		}
 
 		// Validate mode is known
-		validModes := []string{"inquiry", "exploration", "decision", "redirect", "escalate", "research"}
+		validModes := []string{"inquiry", "exploration", "decision", "redirect", "escalate", "research", "education", "clarify", "reframing", "referral"}
 		if !contains(validModes, rule.Mode) {
 			return fmt.Errorf("intent %q has invalid mode %q", intentName, rule.Mode)
 		}
@@ -193,8 +215,8 @@ func contains(slice []string, item string) bool {
 func ClearPersonaCache() {
 	personaCacheMutex.Lock()
 	defer personaCacheMutex.Unlock()
-	personaCache = make(map[string]*PersonaDefinition)
-	currentPersona = nil
+	personaDefinitionCache = make(map[string]*PersonaDefinition)
+	currentPersonaDefinition = nil
 }
 
 // GetPersonaStats returns statistics about cached personas

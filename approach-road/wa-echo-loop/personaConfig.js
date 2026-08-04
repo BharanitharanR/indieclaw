@@ -4,17 +4,19 @@ const toml = require('toml');
 
 class PersonaConfig {
     constructor(data) {
-        this.name = data.persona?.name || 'Default Assistant';
-        this.version = data.persona?.version || '1.0';
-        this.textModel = data.models?.text_model || 'qwen3:8b';
-        this.visionModel = data.models?.vision_model || 'gemma4:e2b';
-        this.promptTemplate = data.personality?.prompt_template || '';
+        // Support both OLD format (with [persona], [models], [personality])
+        // and NEW format (with top-level fields like name, version, text_model)
+        this.name = data.persona?.name || data.name || 'Default Assistant';
+        this.version = data.persona?.version || data.version || '1.0';
+        this.textModel = data.models?.text_model || data.text_model || 'qwen3:8b';
+        this.visionModel = data.models?.vision_model || data.vision_model || 'gemma4:e2b';
+        this.promptTemplate = data.personality?.prompt_template || data.prompt_template || '';
         this.tone = data.personality?.tone || 'professional';
-        this.maxResponseLength = data.personality?.max_response_length || 1000;
+        this.maxResponseLength = data.personality?.max_response_length || data.max_response_length || 1000;
         this.responseStyle = data.personality?.response_style || 'detailed';
         this.includeFollowup = data.personality?.include_followup_questions || false;
         this.toneGuidelines = data.personality?.tone_guidelines || {};
-        this.allowedPhoneNumbers = data.whatsapp?.allowed_phone_numbers || [];
+        this.allowedPhoneNumbers = data.whatsapp?.allowed_phone_numbers || data.allowed_phone_numbers || [];
         this.enabled = data.whatsapp?.enabled !== false;
     }
 

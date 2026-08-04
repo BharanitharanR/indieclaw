@@ -73,29 +73,48 @@ function createNewPersona() {
 
     const cleanName = newName.toLowerCase().replace(/\s+/g, '_');
 
-    // Create new persona config
-    const newConfig = currentConfig ? JSON.parse(JSON.stringify(currentConfig)) : {
-        persona: { name: cleanName, version: '1.0' },
-        models: { text_model: 'qwen3:8b', vision_model: 'gemma4:e2b' },
-        personality: {
-            prompt_template: 'You are a helpful assistant.',
-            planner_prompt: 'Evaluate if this question is within scope.',
-            tone: 'friendly',
-            max_response_length: 1500,
-            response_style: 'conversational',
-            include_followup_questions: true,
-            tone_guidelines: { empathy: '', accountability: '', clarity: '', confidence: '', curiosity: '' }
-        },
-        whatsapp: { allowed_phone_numbers: [], enabled: true }
-    };
+    // Create new persona with PersonaDefinition format (TOML)
+    const newToml = `name = "${cleanName}"
+version = 1
+description = "A new persona"
+text_model = "qwen2:7b"
+vision_model = "llava:7b"
 
-    newConfig.persona.name = cleanName;
+[capabilities]
+can_handle = ["general questions"]
+cannot_handle = []
 
-    // Save new persona using structured API
-    fetch(`/api/persona?name=${cleanName}`, {
+[intents]
+[intents.general_question]
+mode = "research"
+depth = "detailed"
+confidence_min = 0.3
+
+[response_rules]
+[response_rules.research]
+questions_ratio = 0.3
+reflection_ratio = 0.3
+advice_ratio = 0.2
+silence_ratio = 0.2
+max_length = 1500
+forbidden_patterns = []
+required_elements = []
+
+[templates]
+default = "You are a helpful assistant."
+
+[[validation_gates]]
+name = "length_check"
+gate_type = "length_check"
+[validation_gates.parameters]
+max_length = 2000
+`;
+
+    // Save new persona using TOML endpoint
+    fetch(`/api/personas/${cleanName}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ config: newConfig })
+        body: JSON.stringify({ content: newToml })
     })
     .then(res => res.json())
     .then(data => {
@@ -110,18 +129,45 @@ function createNewPersona() {
 // ============= LOAD PERSONA =============
 async function loadPersona() {
     try {
-        const response = await fetch(`/api/persona?name=${personaName}`);
+        // Load full TOML content first
+        const metaResponse = await fetch(`/api/personas/${personaName}`);
+        if (!metaResponse.ok) {
+            throw new Error(`Failed to load persona: ${metaResponse.statusText}`);
+        }
+
+        const metaData = await metaResponse.json();
+        const tomlContent = metaData.content;
+
+        // Parse TOML to get structured data
+        const response = await fetch(`/api/personas/${personaName}/metadata`);
         if (!response.ok) {
-            throw new Error(`Failed to load persona: ${response.statusText}`);
+            throw new Error(`Failed to load persona metadata: ${response.statusText}`);
         }
 
         const data = await response.json();
-        currentConfig = data.config;
-        phoneNumbers = data.config.whatsapp?.allowed_phone_numbers || [];
+        currentConfig = {
+            name: data.name,
+            version: data.version,
+            description: data.description,
+            textModel: data.textModel,
+            visionModel: data.visionModel,
+            capabilities: data.capabilities,
+            intents: data.intents,
+            responseModes: data.responseModes,
+            validationGates: data.validationGateCount,
+            templates: data.templateCount,
+            tomlContent: tomlContent,
+            isValid: data.isValid,
+            schemaErrors: data.schemaErrors
+        };
 
-        // Populate form fields
+        // Populate form fields with new structure
         populateForm();
-        showMessage('✅ Persona loaded successfully', 'success', 2000);
+        if (data.schemaErrors && data.schemaErrors.length > 0) {
+            showMessage(`⚠️ Persona has schema errors`, 'warning', 3000);
+        } else {
+            showMessage('✅ Persona loaded successfully', 'success', 2000);
+        }
     } catch (err) {
         showMessage(`❌ Error loading persona: ${err.message}`, 'error');
     }
@@ -131,35 +177,72 @@ async function loadPersona() {
 function populateForm() {
     if (!currentConfig) return;
 
-    // Basic Info
-    document.getElementById('personaName').value = currentConfig.persona?.name || '';
-    document.getElementById('personaVersion').value = currentConfig.persona?.version || '';
+    // Basic Info (New PersonaDefinition format)
+    document.getElementById('personaName').value = currentConfig.name || '';
+    document.getElementById('personaVersion').value = currentConfig.version || '';
 
     // Models
-    document.getElementById('textModel').value = currentConfig.models?.text_model || '';
-    document.getElementById('visionModel').value = currentConfig.models?.vision_model || '';
+    document.getElementById('textModel').value = currentConfig.textModel || 'qwen2:7b';
+    document.getElementById('visionModel').value = currentConfig.visionModel || 'llava:7b';
 
-    // Personality
-    document.getElementById('promptTemplate').value = currentConfig.personality?.prompt_template || '';
-    document.getElementById('plannerPrompt').value = currentConfig.personality?.planner_prompt || '';
-    document.getElementById('tone').value = currentConfig.personality?.tone || '';
-    document.getElementById('maxResponseLength').value = currentConfig.personality?.max_response_length || '';
-    document.getElementById('responseStyle').value = currentConfig.personality?.response_style || '';
-    document.getElementById('includeFollowup').checked = currentConfig.personality?.include_followup_questions === true;
+    // Show persona structure info
+    const infoEl = document.getElementById('personaInfo');
+    if (infoEl) {
+        infoEl.innerHTML = `
+            <div class="persona-info-box">
+                <h3>Persona Structure</h3>
+                <p><strong>Description:</strong> ${currentConfig.description || 'No description'}</p>
+                <p><strong>Capabilities:</strong></p>
+                <ul>
+                    <li>Can Handle: ${currentConfig.capabilities?.canHandle?.join(', ') || 'none'}</li>
+                    <li>Cannot Handle: ${currentConfig.capabilities?.cannotHandle?.join(', ') || 'none'}</li>
+                </ul>
+                <p><strong>Intents (${currentConfig.intents?.length || 0}):</strong> ${currentConfig.intents?.join(', ') || 'none'}</p>
+                <p><strong>Response Modes (${currentConfig.responseModes?.length || 0}):</strong> ${currentConfig.responseModes?.join(', ') || 'none'}</p>
+                <p><strong>Validation Gates:</strong> ${currentConfig.validationGates || 0}</p>
+                <p><strong>Templates:</strong> ${currentConfig.templates || 0}</p>
+                ${!currentConfig.isValid ? `<p style="color: red;">⚠️ Schema validation failed</p>` : '<p style="color: green;">✅ Valid schema</p>'}
+            </div>
+        `;
+    }
 
-    // Tone Guidelines
-    const tg = currentConfig.personality?.tone_guidelines || {};
-    document.getElementById('toneEmpathy').value = tg.empathy || '';
-    document.getElementById('toneAccountability').value = tg.accountability || '';
-    document.getElementById('toneClarity').value = tg.clarity || '';
-    document.getElementById('toneConfidence').value = tg.confidence || '';
-    document.getElementById('toneCuriosity').value = tg.curiosity || '';
+    // Show raw TOML for editing
+    if (currentConfig.tomlContent) {
+        const tomlEditor = document.getElementById('tomlEditor');
+        if (tomlEditor) {
+            tomlEditor.value = currentConfig.tomlContent;
+        }
+    }
 
-    // WhatsApp
-    document.getElementById('whatsappEnabled').checked = currentConfig.whatsapp?.enabled !== false;
+    // Render template list
+    renderIntentsList();
+}
 
-    // Render phone numbers
-    renderPhoneNumbers();
+// ============= RENDER INTENTS & MODES =============
+function renderIntentsList() {
+    const container = document.getElementById('intentsContainer');
+    if (!container || !currentConfig.intents) return;
+
+    container.innerHTML = '<h4>Intents Defined:</h4>';
+    const ul = document.createElement('ul');
+    currentConfig.intents.forEach(intent => {
+        const li = document.createElement('li');
+        li.textContent = intent;
+        ul.appendChild(li);
+    });
+    container.appendChild(ul);
+
+    const responsesContainer = document.getElementById('responsesContainer');
+    if (responsesContainer && currentConfig.responseModes) {
+        responsesContainer.innerHTML = '<h4>Response Modes:</h4>';
+        const ul = document.createElement('ul');
+        currentConfig.responseModes.forEach(mode => {
+            const li = document.createElement('li');
+            li.textContent = mode;
+            ul.appendChild(li);
+        });
+        responsesContainer.appendChild(ul);
+    }
 }
 
 // ============= PHONE NUMBERS =============
@@ -218,49 +301,21 @@ async function savePersona(e) {
     saveBtn.innerHTML = '<span class="loading"></span>Saving...';
 
     try {
-        // Build config object from form
-        const config = {
-            persona: {
-                name: document.getElementById('personaName').value,
-                version: document.getElementById('personaVersion').value,
-            },
-            models: {
-                text_model: document.getElementById('textModel').value,
-                vision_model: document.getElementById('visionModel').value,
-            },
-            personality: {
-                prompt_template: document.getElementById('promptTemplate').value,
-                planner_prompt: document.getElementById('plannerPrompt').value,
-                tone: document.getElementById('tone').value,
-                max_response_length: parseInt(document.getElementById('maxResponseLength').value),
-                response_style: document.getElementById('responseStyle').value,
-                include_followup_questions: document.getElementById('includeFollowup').checked,
-                tone_guidelines: {
-                    empathy: document.getElementById('toneEmpathy').value,
-                    accountability: document.getElementById('toneAccountability').value,
-                    clarity: document.getElementById('toneClarity').value,
-                    confidence: document.getElementById('toneConfidence').value,
-                    curiosity: document.getElementById('toneCuriosity').value,
-                },
-            },
-            whatsapp: {
-                allowed_phone_numbers: phoneNumbers,
-                enabled: document.getElementById('whatsappEnabled').checked,
-            },
-        };
+        // Get TOML content from editor
+        const tomlEditor = document.getElementById('tomlEditor');
+        const tomlContent = tomlEditor?.value || currentConfig.tomlContent;
 
-        // Validate required fields
-        if (!config.persona.name || !config.models.text_model) {
-            throw new Error('Please fill in all required fields');
+        if (!tomlContent || tomlContent.trim() === '') {
+            throw new Error('No TOML content to save');
         }
 
-        // Send to server
-        const response = await fetch(`/api/persona?name=${personaName}`, {
+        // Send to server using raw TOML endpoint
+        const response = await fetch(`/api/personas/${personaName}`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
             },
-            body: JSON.stringify({ config }),
+            body: JSON.stringify({ content: tomlContent }),
         });
 
         if (!response.ok) {
@@ -268,9 +323,24 @@ async function savePersona(e) {
             throw new Error(error.error || 'Failed to save persona');
         }
 
-        const result = await response.json();
-        currentConfig = config;
-        showMessage(`✅ ${result.message}`, 'success', 3000);
+        // Validate the persona after saving
+        const validateResponse = await fetch(`/api/personas/${personaName}/validate`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ content: tomlContent }),
+        });
+
+        const validateData = await validateResponse.json();
+        if (!validateData.success) {
+            showMessage(`⚠️ Saved but validation failed: ${validateData.error}`, 'warning', 4000);
+        } else {
+            showMessage(`✅ Persona saved and validated!`, 'success', 3000);
+        }
+
+        // Reload to show updated data
+        setTimeout(() => loadPersona(), 500);
     } catch (err) {
         showMessage(`❌ Error: ${err.message}`, 'error');
     } finally {
