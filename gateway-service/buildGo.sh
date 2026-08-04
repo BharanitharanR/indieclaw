@@ -1,7 +1,8 @@
 #!/bin/bash
 
 # Exit immediately if a command fails
-
+	
+export PERSONA_NAME="executive_coach"
 export PATH=$PATH:$(go env GOPATH)/bin
 export TEXT_MODEL="qwen3:8b"
 export VISION_MODEL="llava:7b"

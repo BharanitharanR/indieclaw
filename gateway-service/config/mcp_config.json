@@ -1,0 +1,10 @@
+{
+  "servers": [
+    {
+      "name": "web-search",
+      "type": "stdio",
+      "url": "/Users/bharani/Desktop/aiAgentCompaction/indieclaw/limbs/search/web-search-mcp-main/dist/index.js",
+      "args": []
+    }
+  ]
+}

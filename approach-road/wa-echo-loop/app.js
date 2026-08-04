@@ -141,6 +141,11 @@ async function handleIncomingMessage(msg) {
         // Continue processing anyway - we have the phone number from msg.from
     }
 
+    msg.getContactLidAndPhone(contact).then(({ lid, phone }) => {
+        console.log(`📩 Message from: ${phone} (LID: ${lid || 'N/A'})`);
+    }).catch(err => {
+        console.warn(`⚠️  Could not retrieve contact LID and phone: ${err.message}`);
+    });
     // Extract phone number from sender JID (format: "919361315379@c.us" -> "919361315379")
     const senderPhone = msg.from.split('@')[0];
 
@@ -153,7 +158,7 @@ async function handleIncomingMessage(msg) {
     } else {
         console.log(`⚠️  No phone number validation configured. Accepting from: ${senderPhone}`);
     }
-
+    // 213103828537359
     // Check for trigger prefix (default: "Self" if none configured)
     const triggerPrefix = process.env.TRIGGER_PREFIX || 'Self';
     if (!msg.body.startsWith(triggerPrefix)) return;
