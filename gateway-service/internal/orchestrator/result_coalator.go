@@ -69,57 +69,54 @@ func (rc *LLMResultCoalator) CoalesceWithDefinition(ctx context.Context, steps [
 	return finalResponse, nil
 }
 
-// buildSynthesisPromptNew creates persona-aware synthesis prompt
+// buildSynthesisPromptNew creates persona-aware synthesis prompt in COACHING MODE
 func (rc *LLMResultCoalator) buildSynthesisPromptNew(steps []StepResult, personaDef *PersonaDefinition, mode string) string {
 	var builder strings.Builder
 
 	// Get response rule for this mode
 	responseRule := personaDef.ResponseRules[mode]
 
-	builder.WriteString(fmt.Sprintf("You are a %s assistant (v%d).\n\n", personaDef.Name, personaDef.Version))
+	// === COACHING-MODE SYNTHESIS PROMPT ===
+	builder.WriteString(fmt.Sprintf("You are a %s (v%d).\n", personaDef.Name, personaDef.Version))
+	builder.WriteString("Your role is to help clients discover insights, not provide solutions.\n\n")
 
-	builder.WriteString("Your communication style:\n")
+	builder.WriteString("=== YOUR COACHING APPROACH ===\n")
+	builder.WriteString("COACHING MODE (not consulting):\n")
+	builder.WriteString(fmt.Sprintf("- Questions: %d%% (Powerful inquiry that builds self-awareness)\n", int(responseRule.QuestionsRatio*100)))
+	builder.WriteString(fmt.Sprintf("- Reflection: %d%% (Mirror back what you're hearing and noticing)\n", int(responseRule.ReflectionRatio*100)))
+	builder.WriteString(fmt.Sprintf("- Advice: %d%% (Only if client asks; frame as options not prescriptions)\n", int(responseRule.AdviceRatio*100)))
+	builder.WriteString(fmt.Sprintf("- Silence: %d%% (Space for client to think; use '...' or pause indicators)\n", int(responseRule.SilenceRatio*100)))
 	builder.WriteString(fmt.Sprintf("- Tone: %s\n", responseRule.Tone))
-	builder.WriteString(fmt.Sprintf("- Response ratios: Questions=%d%% | Reflection=%d%% | Advice=%d%% | Silence=%d%%\n",
-		int(responseRule.QuestionsRatio*100),
-		int(responseRule.ReflectionRatio*100),
-		int(responseRule.AdviceRatio*100),
-		int(responseRule.SilenceRatio*100),
-	))
 
-	builder.WriteString("\nStep Results to Synthesize:\n")
-	builder.WriteString("==========================\n")
-
+	builder.WriteString("\n=== RESEARCH INSIGHTS (Use as evidence for inquiry) ===\n")
 	for i, step := range steps {
-		builder.WriteString(fmt.Sprintf("\nStep %d:\n", i+1))
+		builder.WriteString(fmt.Sprintf("\nDiscovery %d:\n", i+1))
 
 		if step.Success {
-			builder.WriteString(fmt.Sprintf("✓ %s\n", step.Result))
+			// Focus on insights, not directives
+			builder.WriteString(fmt.Sprintf("→ %s\n", step.Result))
 			if len(step.InternetData) > 0 {
-				builder.WriteString(fmt.Sprintf("  (with %d sources)\n", len(step.InternetData)))
+				builder.WriteString(fmt.Sprintf("  (based on %d sources)\n", len(step.InternetData)))
 			}
-		} else {
-			builder.WriteString(fmt.Sprintf("✗ Failed: %s\n", step.Error))
 		}
 	}
 
-	builder.WriteString("\n==========================\n\n")
+	builder.WriteString("\n=== HOW TO USE THIS RESEARCH ===\n")
+	builder.WriteString("Transform insights into COACHING QUESTIONS:\n")
+	builder.WriteString("- NOT: 'You should try X' → BUT: 'How might X look in your situation?'\n")
+	builder.WriteString("- NOT: 'Here are 5 techniques' → BUT: 'What resonates with you from these patterns?'\n")
+	builder.WriteString("- NOT: 'Do this practice' → BUT: 'What small experiment could you try this week?'\n\n")
 
-	builder.WriteString("Requirements:\n")
-	builder.WriteString(fmt.Sprintf("1. Maximum length: %d characters\n", responseRule.MaxLength))
-	builder.WriteString(fmt.Sprintf("2. Keep tone: %s\n", responseRule.Tone))
+	builder.WriteString(fmt.Sprintf("Forbidden (consultant mode): %s\n", strings.Join(responseRule.ForbiddenPatterns, " | ")))
 
-	if responseRule.QuestionsRatio > 0.3 {
-		builder.WriteString("3. Include thoughtful questions to guide thinking\n")
-	}
-	if responseRule.ReflectionRatio > 0.2 {
-		builder.WriteString("4. Reflect back what you're hearing\n")
-	}
-	if len(responseRule.ForbiddenPatterns) > 0 {
-		builder.WriteString(fmt.Sprintf("5. AVOID these patterns: %s\n", strings.Join(responseRule.ForbiddenPatterns, ", ")))
-	}
+	builder.WriteString("\n=== COACHING STRUCTURE ===\n")
+	builder.WriteString("1. Reflect: 'I'm hearing that...' or 'What I notice is...'\n")
+	builder.WriteString("2. Explore: Ask a powerful question that builds awareness\n")
+	builder.WriteString("3. Connect: Link their insight to the research/patterns you discovered\n")
+	builder.WriteString("4. Invite: 'What possibility opens up for you?' or 'What would you do differently?'\n\n")
 
-	builder.WriteString("\nCreate a natural, flowing response that synthesizes all information above.\n")
+	builder.WriteString(fmt.Sprintf("⚠️  CRITICAL: Stay in coaching voice. Maximum length: %d characters.\n", responseRule.MaxLength))
+	builder.WriteString("Let the client discover the answer, don't hand them the answer.\n")
 
 	return builder.String()
 }

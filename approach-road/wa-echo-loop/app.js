@@ -136,16 +136,12 @@ async function handleIncomingMessage(msg) {
     let contact;
     try {
         contact = await msg.getContact();
+        console.log(`📩 Message from: ${contact.pushname || contact.number} (${contact.number})`);
     } catch (err) {
         console.warn(`⚠️  Could not retrieve contact info: ${err.message}`);
         // Continue processing anyway - we have the phone number from msg.from
     }
 
-    msg.getContactLidAndPhone(contact).then(({ lid, phone }) => {
-        console.log(`📩 Message from: ${phone} (LID: ${lid || 'N/A'})`);
-    }).catch(err => {
-        console.warn(`⚠️  Could not retrieve contact LID and phone: ${err.message}`);
-    });
     // Extract phone number from sender JID (format: "919361315379@c.us" -> "919361315379")
     const senderPhone = msg.from.split('@')[0];
 
