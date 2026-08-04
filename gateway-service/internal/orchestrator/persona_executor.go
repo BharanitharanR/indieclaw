@@ -160,7 +160,7 @@ func (pe *PersonaExecutorImpl) classifyIntentWithRules(message string, persona *
 
 	// Check if message matches any intent's description or keywords
 	// (This would be enhanced with a proper keyword/pattern system)
-	for intentName, rule := range persona.Intents {
+	for intentName := range persona.Intents {
 		// Quick heuristic: check if intent mode gives us a clue
 		if strings.Contains(message, intentName) {
 			score := float32(0.6)

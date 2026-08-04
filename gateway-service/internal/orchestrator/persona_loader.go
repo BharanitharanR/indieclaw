@@ -10,9 +10,9 @@ import (
 )
 
 var (
-	personaCache      = make(map[string]*PersonaDefinition)
-	personaCacheMutex sync.RWMutex
-	currentPersona    *PersonaDefinition
+	personaDefinitionCache = make(map[string]*PersonaDefinition)
+	personaCacheMutex      sync.RWMutex
+	currentPersonaDefinition *PersonaDefinition
 )
 
 // LoadPersonaDefinition loads a new-style persona from TOML file by name
@@ -20,7 +20,7 @@ var (
 func LoadPersonaDefinition(name string) (*PersonaDefinition, error) {
 	// Check cache first
 	personaCacheMutex.RLock()
-	if cached, ok := personaCache[name]; ok {
+	if cached, ok := personaDefinitionCache[name]; ok {
 		personaCacheMutex.RUnlock()
 		return cached, nil
 	}
@@ -48,7 +48,7 @@ func LoadPersonaDefinition(name string) (*PersonaDefinition, error) {
 
 	// Cache it
 	personaCacheMutex.Lock()
-	personaCache[name] = &persona
+	personaDefinitionCache[name] = &persona
 	personaCacheMutex.Unlock()
 
 	return &persona, nil
@@ -63,23 +63,23 @@ func SetCurrentPersonaDefinition(name string) error {
 		if err2 != nil {
 			return fmt.Errorf("failed to load persona %q and fallback generic_assistant: %w, %w", name, err, err2)
 		}
-		currentPersona = genericPersona
+		currentPersonaDefinition = genericPersona
 		return nil
 	}
 
-	currentPersona = persona
+	currentPersonaDefinition = persona
 	return nil
 }
 
 // GetCurrentPersonaDefinition returns the currently active persona definition
 func GetCurrentPersonaDefinition() *PersonaDefinition {
-	if currentPersona == nil {
+	if currentPersonaDefinition == nil {
 		// Initialize with generic persona
 		if err := SetCurrentPersonaDefinition("generic_assistant"); err != nil {
 			panic(fmt.Sprintf("failed to load generic persona: %v", err))
 		}
 	}
-	return currentPersona
+	return currentPersonaDefinition
 }
 
 // LoadPersona is a wrapper that tries to load PersonaDefinition first,
@@ -203,12 +203,12 @@ func GetPersonaStats() map[string]interface{} {
 	defer personaCacheMutex.RUnlock()
 
 	var currentName string
-	if currentPersona != nil {
-		currentName = currentPersona.Name
+	if currentPersonaDefinition != nil {
+		currentName = currentPersonaDefinition.Name
 	}
 
 	return map[string]interface{}{
-		"cached_count":      len(personaCache),
+		"cached_count":      len(personaDefinitionCache),
 		"current_persona":   currentName,
 		"cached_names":      getPersonaNames(),
 	}
@@ -216,7 +216,7 @@ func GetPersonaStats() map[string]interface{} {
 
 func getPersonaNames() []string {
 	var names []string
-	for name := range personaCache {
+	for name := range personaDefinitionCache {
 		names = append(names, name)
 	}
 	return names
