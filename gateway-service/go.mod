@@ -13,7 +13,7 @@ require (
 	github.com/qdrant/go-client v1.18.3
 	github.com/rabbitmq/amqp091-go v1.13.0
 	github.com/tmc/langchaingo v0.1.14
-	google.golang.org/grpc v1.82.0
+	google.golang.org/grpc v1.82.1
 	google.golang.org/protobuf v1.36.11
 )
 
