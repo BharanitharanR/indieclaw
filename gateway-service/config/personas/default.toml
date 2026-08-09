@@ -70,3 +70,16 @@ helpfulness = "Focus on being helpful to the user"
 # Example: "91-98765-43210" for India
 allowed_phone_numbers = []
 enabled = true
+
+[whitelist]
+# Contact name-based whitelist for registration flow
+# When enabled, tracks registered contact names based on configured prefix
+enabled = true
+contact_name_prefix = "USER"  # Contacts must start with this prefix (e.g., "USER-Alice")
+storage = "memory"             # "memory" (in-process) or "file" (persistent JSON)
+storage_path = "./whitelist.json"  # Used only if storage = "file"
+
+# Example configurations for different programs:
+# contact_name_prefix = "CLAREO-STUDENT"   # For student coaching program
+# contact_name_prefix = "APPROACH-PATIENT" # For patient monitoring
+# contact_name_prefix = "COACH-TRAINER"    # For coach training program

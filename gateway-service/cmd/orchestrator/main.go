@@ -1,11 +1,13 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
 	"log"
 	"net"
+	"net/http"
 	"os"
 	"sync"
 	"time"
@@ -454,6 +456,10 @@ func (s *server) handleQueueRequest(req QueueRequest, delivery amqp.Delivery) {
 		imageBase64 = req.Images[0]
 	}
 
+	// Optional: Lookup user context before pipeline execution
+	var userID string
+	s.lookupUserContext(req.PhoneNumber, &userID)
+
 	// Execute pipeline with longer timeout
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
 	defer cancel()
@@ -466,6 +472,11 @@ func (s *server) handleQueueRequest(req QueueRequest, delivery amqp.Delivery) {
 	} else {
 		log.Printf("✅ Pipeline completed [%s]: %d chars", req.CorrelationID, len(result))
 		s.publishSuccessResponse(req, result, startTime)
+
+		// Async: Capture learnings from this session to User Context Service
+		if userID != "" {
+			go s.captureSessionLearnings(userID, req.Message, result, startTime)
+		}
 	}
 
 	// Acknowledge the message only after we've published the response
@@ -529,4 +540,87 @@ func (s *server) publishResponse(resp QueueResponse) {
 	}
 
 	log.Printf("📤 Published response [%s] to %s", resp.CorrelationID, s.respQueue.Name)
+}
+
+// ============= USER CONTEXT SERVICE INTEGRATION =============
+
+// lookupUserContext calls User Context Service to retrieve user information
+func (s *server) lookupUserContext(phoneNumber string, userID *string) {
+	ucsURL := os.Getenv("USER_CONTEXT_SERVICE_URL")
+	if ucsURL == "" {
+		ucsURL = "http://localhost:8001"
+	}
+
+	// Create HTTP client with timeout
+	client := &http.Client{Timeout: 2 * time.Second}
+
+	// Call /context/lookup endpoint
+	url := fmt.Sprintf("%s/context/lookup?phoneNumber=%s", ucsURL, phoneNumber)
+	resp, err := client.Post(url, "application/json", nil)
+	if err != nil {
+		log.Printf("⚠️  User Context Service unavailable: %v (continuing without user context)", err)
+		return
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		log.Printf("⚠️  User Context Service returned status %d (continuing without user context)", resp.StatusCode)
+		return
+	}
+
+	// Parse response
+	var ucsResp struct {
+		UserID string `json:"userID"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&ucsResp); err != nil {
+		log.Printf("⚠️  Failed to parse UCS response: %v", err)
+		return
+	}
+
+	*userID = ucsResp.UserID
+	log.Printf("[UCS] Context lookup for phoneNumber: %s -> userID: %s", phoneNumber, ucsResp.UserID)
+}
+
+// captureSessionLearnings asynchronously captures learnings from a coaching session
+func (s *server) captureSessionLearnings(userID string, query string, response string, startTime time.Time) {
+	ucsURL := os.Getenv("USER_CONTEXT_SERVICE_URL")
+	if ucsURL == "" {
+		ucsURL = "http://localhost:8001"
+	}
+
+	updateReq := map[string]interface{}{
+		"userID": userID,
+		"sessionSummary": map[string]interface{}{
+			"timestamp":       time.Now().Unix(),
+			"query":           query,
+			"responseLength":  len(response),
+			"processingTimeMs": time.Since(startTime).Milliseconds(),
+		},
+		"newLearnings": []string{
+			"Coaching session completed",
+		},
+	}
+
+	body, err := json.Marshal(updateReq)
+	if err != nil {
+		log.Printf("❌ Failed to marshal learning capture: %v", err)
+		return
+	}
+
+	client := &http.Client{Timeout: 5 * time.Second}
+	url := fmt.Sprintf("%s/context/update", ucsURL)
+
+	resp, err := client.Post(url, "application/json", bytes.NewReader(body))
+	if err != nil {
+		log.Printf("⚠️  Failed to capture learnings: %v", err)
+		return
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		log.Printf("⚠️  UCS learning capture returned status %d", resp.StatusCode)
+		return
+	}
+
+	log.Printf("[UCS] ✅ Captured learnings for user: %s", userID)
 }

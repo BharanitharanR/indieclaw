@@ -1,0 +1,15 @@
+{
+  "name": "wa-echo-loop",
+  "version": "2.0.0",
+  "description": "WhatsApp bot with direct LLM integration for coaching",
+  "main": "app.js",
+  "scripts": {
+    "start": "node app.js"
+  },
+  "dependencies": {
+    "whatsapp-web.js": "^1.25.5",
+    "qrcode-terminal": "^0.12.0",
+    "axios": "^1.6.0",
+    "toml": "^3.0.0"
+  }
+}

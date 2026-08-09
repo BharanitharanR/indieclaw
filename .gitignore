@@ -27,3 +27,6 @@ gateway-service/go.mod
 gateway-service/bin/orchestrator
 gateway-service/bin/orchestrator
 /persona-control-plane/node_modules
+/approach-road/wa-echo-loop/.wwebjs_auth_fresh
+/wa-echo-loop-working/.wwebjs_auth_fresh
+/wa-echo-loop-working/node_modules

@@ -18,6 +18,14 @@ class PersonaConfig {
         this.toneGuidelines = data.personality?.tone_guidelines || {};
         this.allowedPhoneNumbers = data.whatsapp?.allowed_phone_numbers || data.allowed_phone_numbers || [];
         this.enabled = data.whatsapp?.enabled !== false;
+
+        // Whitelist configuration (NEW)
+        this.whitelistConfig = {
+            enabled: data.whitelist?.enabled !== false,
+            contactNamePrefix: data.whitelist?.contact_name_prefix || 'USER',
+            storage: data.whitelist?.storage || 'memory',  // 'memory' or 'file'
+            storagePath: data.whitelist?.storage_path || './whitelist.json',
+        };
     }
 
     static loadByName(personaName = 'default') {
@@ -91,8 +99,23 @@ class PersonaConfig {
         return this.allowedPhoneNumbers;
     }
 
+    getWhitelistConfig() {
+        return this.whitelistConfig;
+    }
+
+    getContactNamePrefix() {
+        return this.whitelistConfig.contactNamePrefix;
+    }
+
+    isWhitelistEnabled() {
+        return this.whitelistConfig.enabled;
+    }
+
     toString() {
-        return `Persona: ${this.name} (v${this.version}) | Tone: ${this.tone} | Allowed Numbers: ${this.allowedPhoneNumbers.length}`;
+        const whitelistStatus = this.whitelistConfig.enabled
+            ? `Whitelist: ${this.whitelistConfig.contactNamePrefix}-*`
+            : 'Whitelist: disabled';
+        return `Persona: ${this.name} (v${this.version}) | Tone: ${this.tone} | ${whitelistStatus}`;
     }
 }
 

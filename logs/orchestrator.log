@@ -1,0 +1,16 @@
+2026/08/06 23:43:05.564296 main.go:70: ✅ Loaded persona: Executive Coach (v1)
+2026/08/06 23:43:05.564422 workflow_tools.go:42: ✅ Tool registry initialized with 0 tools
+2026/08/06 23:43:05.564443 main.go:248: 🎯 Tool registry initialized and wired to orchestrator
+2026/08/06 23:43:05.564456 main.go:220: ℹ️ No MCP_CONFIG_PATH provided. Skipping MCP server initialization.
+2026/08/06 23:43:05.590760 main.go:372: 🐰 RabbitMQ connected: requests=[0], responses=[0]
+2026/08/06 23:43:05.590792 main.go:136: ✅ RabbitMQ queue consumer initialized
+2026/08/06 23:43:05.590830 main.go:143: 🔄 Background thread: Initializing local Qdrant collection...
+2026/08/06 23:43:05.590985 main.go:178: 🚀 Orchestrator running on :9000
+2026/08/06 23:43:05.590998 main.go:179:    Persona: Executive Coach (v1)
+2026/08/06 23:43:05.591006 main.go:180:    Text Model: qwen2:7b | Vision Model: llava:7b
+2026/08/06 23:43:05.591013 main.go:181:    Embedding: nomic-embed-text | Queue: RabbitMQ
+2026/08/06 23:43:05.591018 main.go:182:    Intents: 7 | Validation Gates: 5
+2026/08/06 23:43:05.591126 main.go:417: 🎧 Started consuming from queue: orchestrator.requests
+2026/08/06 23:43:05.639564 main.go:25: Qdrant collection 'chat_history' already initialized.
+2026/08/06 23:43:05.639626 main.go:164: ✅ Background thread: Qdrant client connected and successfully wired.
+2026/08/06 23:43:05.639633 main.go:165: ✅ Background thread: Pipeline reinitialized with Qdrant client.

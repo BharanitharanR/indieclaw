@@ -7,7 +7,7 @@ export PATH=$PATH:$(go env GOPATH)/bin
 export TEXT_MODEL="qwen3:8b"
 export VISION_MODEL="llava:7b"
 export EMBEDDING_MODEL="nomic-embed-text"
-export MCP_CONFIG_PATH="/Users/bharani/Desktop/aiAgentCompaction/indieclaw/gateway-service/bin/mcp-servers-config.json"
+export MCP_CONFIG_PATH="/Users/bharani/Desktop/aiAgentCompaction/indieclaw/gateway-service/config/mcp_config.json"
 export LOG_PATH="/Users/bharani/Desktop/aiAgentCompaction/indieclaw/gateway-service/bin/logs/orchestrator.log"
 # Go plugins
 go install google.golang.org/protobuf/cmd/protoc-gen-go@latest

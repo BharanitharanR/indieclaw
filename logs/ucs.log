@@ -1,0 +1,11 @@
+2026/08/06 23:43:06 [Main] User Context Service starting...
+2026/08/06 23:43:06 [Main] Data directory: /Users/bharani/.adiyan/users
+2026/08/06 23:43:06 [Main] Port: :8001
+2026/08/06 23:43:06 [Main] Log level: info
+2026/08/06 23:43:06 [Storage] Initialized with directory: /Users/bharani/.adiyan/users
+2026/08/06 23:43:06 [Main] ✅ User Context Service is running on :8001
+2026/08/06 23:43:06 [Server] Starting User Context Service on :8001
+2026/08/06 23:45:52 [Main] Received signal: terminated
+2026/08/06 23:45:52 [Server] Stopping User Context Service
+2026/08/06 23:45:52 Server error: http: Server closed
+2026/08/06 23:45:52 [Main] ✅ User Context Service stopped gracefully
